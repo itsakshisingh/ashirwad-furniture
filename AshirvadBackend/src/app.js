@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -35,6 +34,8 @@ app.use(
       if (allowedOrigins.includes(origin)) return callback(null, true);
       // Allow any localhost / 127.0.0.1 origin in development
       if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+      // Allow ashirwadfurnex.com and all its subdomains
+      if (/^https?:\/\/([a-z0-9-]+\.)?ashirwadfurnex\.com$/.test(origin)) return callback(null, true);
       callback(new Error(`CORS: origin '${origin}' not allowed`));
     },
     credentials: true,
