@@ -91,7 +91,9 @@ export default function ProductForm() {
         setCats(getList(c)); setSubs(getList(s));
         if (isEdit) {
           const d = pickItem(await productsApi.get(id));
-          setP(fromServer(d)); setExisting(d.images || []);
+          setP(fromServer(d));
+          const existingImgs = (d.images && d.images.length ? d.images : (d.thumbnail ? [d.thumbnail] : []));
+          setExisting(existingImgs);
         }
       } catch (e) { toast.error(errMsg(e)); }
       finally { setLoading(false); }

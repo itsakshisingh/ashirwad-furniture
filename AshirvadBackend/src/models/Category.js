@@ -25,6 +25,10 @@ const categorySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    images: {
+      type: [String],
+      default: [],
+    },
     displayOrder: {
       type: Number,
       default: 0,

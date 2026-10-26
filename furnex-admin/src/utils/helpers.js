@@ -22,8 +22,15 @@ export function errMsg(err, fallback = "Something went wrong. Please try again."
 
 export function imgUrl(path) {
   if (!path) return "";
-  if (/^(https?:|data:|blob:)/.test(path)) return path;
-  return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
+  if (Array.isArray(path)) {
+    if (path.length === 0) return "";
+    path = path[0];
+  }
+  if (!path || typeof path !== "string") return "";
+  const trimmed = path.trim();
+  if (!trimmed) return "";
+  if (/^(https?:|data:|blob:)/.test(trimmed)) return trimmed;
+  return `${API_ORIGIN}/${trimmed.replace(/^\/+/, "")}`;
 }
 
 export const idOf = (v) => (v && typeof v === "object" ? v._id : v) || "";

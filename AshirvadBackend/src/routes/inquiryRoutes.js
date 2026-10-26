@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createInquiry,
   getInquiryById,
+  getMyInquiries,
   getAllInquiries,
   getInquiryByIdAdmin,
   updateInquiry,
@@ -15,6 +16,9 @@ const { protect, authorize, optionalAuth } = require("../middlewares/authMiddlew
 
 // Public APIs (optionalAuth allows both logged-in and guest users)
 router.post("/", optionalAuth, createInquiry);
+
+// User APIs (logged-in user only)
+router.get("/my-inquiries", protect, getMyInquiries);
 
 // Admin APIs
 router.get("/admin/all", protect, authorize("admin"), getAllInquiries);

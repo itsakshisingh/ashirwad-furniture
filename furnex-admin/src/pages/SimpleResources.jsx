@@ -151,7 +151,8 @@ function ResourcePage({ cfg }) {
       ? lookups.categories.filter((c) => c._id !== editing?._id).map((c) => ({ value: c._id, label: c.name }))
       : f.options;
 
-  const existingImages = editing?._id ? [].concat(editing[cfg.imagesKey] || []) : [];
+  const rawExisting = editing?._id ? (editing[cfg.imagesKey] ?? editing.images ?? editing.image ?? []) : [];
+  const existingImages = [].concat(rawExisting || []).filter(Boolean);
 
   return (
     <>
@@ -184,13 +185,33 @@ function ResourcePage({ cfg }) {
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {visible.map((r) => {
-                  const img = [].concat(r[cfg.imagesKey] || [])[0];
+                  const rawImg = r[cfg.imagesKey] ?? r.images ?? r.image ?? r.thumbnail;
+                  const img = Array.isArray(rawImg) ? rawImg[0] : rawImg;
+                  const resolvedImg = img ? imgUrl(img) : "";
                   return (
                     <tr key={r._id} className="hover:bg-stone-50/60">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-stone-100">
-                            {img && <img src={imgUrl(img)} alt="" className="h-full w-full object-cover" />}
+                          <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-stone-100 flex items-center justify-center text-stone-400">
+                            {resolvedImg ? (
+                              <img
+                                src={resolvedImg}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              className="text-[11px] font-medium text-stone-400 select-none"
+                              style={{ display: resolvedImg ? "none" : "flex" }}
+                            >
+                              No img
+                            </span>
                           </div>
                           <div className="min-w-0">
                             <p className="truncate font-semibold">{r[cfg.nameKey]}</p>

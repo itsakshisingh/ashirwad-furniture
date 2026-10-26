@@ -82,12 +82,33 @@ export default function Products() {
               <tbody className="divide-y divide-stone-100">
                 {visible.map((p) => {
                   const [tone, label] = STOCK[p.inventory?.stockStatus] || STOCK.in_stock;
-                  const img = p.thumbnail || p.images?.[0];
+                  const rawImg = p.thumbnail || (Array.isArray(p.images) ? p.images[0] : p.images) || (Array.isArray(p.image) ? p.image[0] : p.image);
+                  const resolvedImg = rawImg ? imgUrl(rawImg) : "";
                   return (
                     <tr key={p._id} className="hover:bg-stone-50/60">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100">{img && <img src={imgUrl(img)} alt="" className="h-full w-full object-cover" />}</div>
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100 flex items-center justify-center text-stone-400">
+                            {resolvedImg ? (
+                              <img
+                                src={resolvedImg}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              className="text-[10px] font-medium text-stone-400 select-none"
+                              style={{ display: resolvedImg ? "none" : "flex" }}
+                            >
+                              No img
+                            </span>
+                          </div>
                           <div className="min-w-0">
                             <p className="flex items-center gap-1 truncate font-semibold">{p.name}{p.isFeatured && <Star className="h-3.5 w-3.5 fill-brass-500 text-brass-500" />}</p>
                             <p className="text-xs text-stone-500">{p.sku}</p>

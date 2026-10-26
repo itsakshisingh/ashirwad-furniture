@@ -405,6 +405,60 @@ const deleteInquiry = async (req, res) => {
   }
 };
 
+// USER: Get all my inquiries (logged-in user)
+const getMyInquiries = async (req, res) => {
+  try {
+    const {
+      status,
+      page = 1,
+      limit = 20,
+      sort = "-createdAt",
+    } = req.query;
+
+    const query = {
+      user: req.user._id,
+    };
+
+    if (status) {
+      query.status = status;
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const inquiries = await Inquiry.find(query)
+      .populate({
+        path: "product",
+        select: "name slug sku images pricing specifications category subcategory description isActive",
+        populate: [
+          { path: "category", select: "name slug" },
+          { path: "subcategory", select: "name slug" },
+        ],
+      })
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+
+    const total = await Inquiry.countDocuments(query);
+
+    return res.status(200).json({
+      success: true,
+      count: inquiries.length,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / Number(limit)),
+      data: inquiries,
+    });
+  } catch (error) {
+    console.error("Get my inquiries:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch your inquiries.",
+    });
+  }
+};
+
 // ADMIN: Get inquiry statistics
 const getInquiryStats = async (req, res) => {
   try {
@@ -444,6 +498,7 @@ const getInquiryStats = async (req, res) => {
 module.exports = {
   createInquiry,
   getInquiryById,
+  getMyInquiries,
   getAllInquiries,
   getInquiryByIdAdmin,
   updateInquiry,
