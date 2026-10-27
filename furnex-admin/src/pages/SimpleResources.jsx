@@ -199,9 +199,14 @@ function ResourcePage({ cfg }) {
                                 alt=""
                                 className="h-full w-full object-cover"
                                 onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  if (e.currentTarget.nextElementSibling) {
-                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                  const fallback = imgUrl("/uploads/categories/1792760392576-5920419f-7449-4350-b7b7-2e2bac586b68.png");
+                                  if (e.currentTarget.src !== fallback) {
+                                    e.currentTarget.src = fallback;
+                                  } else {
+                                    e.currentTarget.style.display = "none";
+                                    if (e.currentTarget.nextElementSibling) {
+                                      e.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
                                   }
                                 }}
                               />

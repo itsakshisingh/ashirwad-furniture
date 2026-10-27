@@ -95,9 +95,14 @@ export default function Products() {
                                 alt=""
                                 className="h-full w-full object-cover"
                                 onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  if (e.currentTarget.nextElementSibling) {
-                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                  const fallback = imgUrl("/uploads/products/1792763267003-325085ee-ea1a-4d7e-9b4d-62db5de27829.png");
+                                  if (e.currentTarget.src !== fallback) {
+                                    e.currentTarget.src = fallback;
+                                  } else {
+                                    e.currentTarget.style.display = "none";
+                                    if (e.currentTarget.nextElementSibling) {
+                                      e.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
                                   }
                                 }}
                               />
