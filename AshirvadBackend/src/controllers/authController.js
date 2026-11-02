@@ -58,13 +58,13 @@ const signup = async (req, res) => {
       typeof mobile !== "string" ||
       typeof email !== "string" ||
       typeof password !== "string" ||
-      password.length < 8 ||
+      password.length < 4 ||
       password.length > 72
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Valid fullName, mobile, email and password are required. Password must be 8-72 characters.",
+          "Valid fullName, mobile, email and password are required. Password must be 4-72 characters.",
       });
     }
 
