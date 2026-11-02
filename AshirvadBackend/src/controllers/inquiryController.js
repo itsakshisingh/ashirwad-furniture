@@ -415,8 +415,21 @@ const getMyInquiries = async (req, res) => {
       sort = "-createdAt",
     } = req.query;
 
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in session.",
+      });
+    }
+
+    const userEmail = (req.user?.email || "").trim().toLowerCase();
+
     const query = {
-      user: req.user._id,
+      $or: [
+        { user: userId },
+        ...(userEmail ? [{ customerEmail: userEmail }] : []),
+      ],
     };
 
     if (status) {
@@ -441,13 +454,31 @@ const getMyInquiries = async (req, res) => {
 
     const total = await Inquiry.countDocuments(query);
 
+    // Fallback to productSnapshot if product document was removed
+    const formattedInquiries = inquiries.map((inq) => {
+      let product = inq.product;
+      if (!product && inq.productSnapshot) {
+        product = {
+          name: inq.productSnapshot.name || "Product",
+          sku: inq.productSnapshot.sku || "",
+          images: inq.productSnapshot.images || [],
+          pricing: inq.productSnapshot.pricing || { price: 0, salePrice: null, currency: "INR" },
+          specifications: inq.productSnapshot.specifications || {},
+        };
+      }
+      return {
+        ...inq,
+        product,
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      count: inquiries.length,
+      count: formattedInquiries.length,
       total,
       page: Number(page),
       totalPages: Math.ceil(total / Number(limit)),
-      data: inquiries,
+      data: formattedInquiries,
     });
   } catch (error) {
     console.error("Get my inquiries:", error.message);

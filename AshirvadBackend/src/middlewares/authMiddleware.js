@@ -1,4 +1,3 @@
-
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
@@ -30,9 +29,13 @@ const protect = async (req, res, next) => {
 
     // Read the current role from the database, not only from the token.
     req.user = {
+      _id: user._id,
       id: user._id.toString(),
       role: user.role,
       email: user.email,
+      fullName: user.fullName,
+      mobile: user.mobile,
+      address: user.address,
     };
 
     next();
