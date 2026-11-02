@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || "http://localhost:5000").replace(/\/$/, "");
+export const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || "https://backendapp.ashirwadfurnex.com").replace(/\/$/, "");
 
 export const tokenStore = {
   get access() { return localStorage.getItem("fx_access"); },

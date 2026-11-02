@@ -2,7 +2,7 @@
 
 ## Run
 1. `npm install`
-2. `.env` me `VITE_API_ORIGIN=http://localhost:5000` (backend ka URL)
+2. `.env` me `VITE_API_ORIGIN=https://backendapp.ashirwadfurnex.com` (backend ka URL)
 3. `npm run dev` -> http://localhost:5173
 
 ## Routes
