@@ -89,7 +89,35 @@ export default function Inquiries() {
                       <p className="font-semibold">{r.customerName || "Guest customer"}</p>
                       <p className="text-xs text-stone-500">{r.customerPhone || r.customerEmail || "—"}</p>
                     </td>
-                    <td className="hidden px-4 py-3 md:table-cell">{r.productSnapshot?.name || r.product?.name || "—"} <span className="text-stone-400">× {r.quantity}</span></td>
+                    <td className="hidden px-4 py-3 md:table-cell">
+                      <div className="flex items-center gap-2.5">
+                        {(() => {
+                          const img = r.product?.thumbnail || r.productSnapshot?.images?.[0] || r.product?.images?.[0];
+                          const src = img ? imgUrl(img) : "";
+                          return (
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 border border-stone-200">
+                              {src ? (
+                                <img
+                                  src={src}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    const fallback = imgUrl("/uploads/products/02-furnex-class-pro-ms-three-seater-school-desk.jpg");
+                                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-[9px] font-medium text-stone-400 select-none">No img</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{r.productSnapshot?.name || r.product?.name || "—"}</p>
+                          <span className="text-xs text-stone-400">Qty: {r.quantity}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="hidden px-4 py-3 sm:table-cell">{formatDate(r.createdAt)}</td>
                     <td className="px-4 py-3"><Badge tone={INQUIRY_TONES[r.status]}>{r.status}</Badge></td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -125,7 +153,21 @@ export default function Inquiries() {
               <div className="rounded-lg bg-stone-50 p-4 text-sm">
                 <p className="mb-2 font-bold">Product</p>
                 <div className="flex gap-3">
-                  {snap?.images?.[0] && <img src={imgUrl(snap.images[0])} alt="" className="h-16 w-16 rounded-lg object-cover" />}
+                  {(() => {
+                    const img = open.product?.thumbnail || snap?.images?.[0] || open.product?.images?.[0];
+                    if (!img) return null;
+                    return (
+                      <img
+                        src={imgUrl(img)}
+                        alt=""
+                        className="h-16 w-16 rounded-lg object-cover border border-stone-200"
+                        onError={(e) => {
+                          const fallback = imgUrl("/uploads/products/02-furnex-class-pro-ms-three-seater-school-desk.jpg");
+                          if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                        }}
+                      />
+                    );
+                  })()}
                   <div>
                     <p className="font-semibold">{snap?.name || open.product?.name}</p>
                     {snap?.sku && <p className="text-xs text-stone-500">SKU {snap.sku}</p>}
