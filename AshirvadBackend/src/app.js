@@ -15,6 +15,7 @@ const filterRoutes = require("./routes/filterRoutes");
 const galleryRoutes = require("./routes/galleryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const productReviewRoutes = require("./routes/productReviewRoutes");
+const { serveMedia } = require("./controllers/mediaController");
 
 const app = express();
 
@@ -48,6 +49,14 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve media directly from MongoDB Atlas Buffer (medias collection)
+app.get("/api/v1/media/:id", serveMedia);
+app.get("/api/v1/media/file/:filename", serveMedia);
+app.get("/uploads/:folder/:filename", serveMedia);
+app.get("/uploads/:filename", serveMedia);
+app.get("/product-images/:filename", serveMedia);
+
+// Fallback to static folder if local files exist
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/product-images", express.static(path.join(__dirname, "../uploads/products")));
 
