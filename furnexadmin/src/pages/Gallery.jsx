@@ -35,7 +35,6 @@ const MEDIA_TYPES = [
   { key: "all", label: "All Media", icon: Sparkles },
   { key: "image", label: "Photos", icon: ImageIcon },
   { key: "video", label: "Videos", icon: VideoIcon },
-  { key: "pdf", label: "PDFs", icon: FileText },
 ];
 
 const CATEGORY_SUGGESTIONS = [
@@ -165,27 +164,28 @@ export default function Gallery() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (file.type === "application/pdf" || ext === ".pdf") {
+      toast.error("PDF upload allowed nahi hai. Kripya sirf Photo ya Video chunein.");
+      e.target.value = "";
+      return;
+    }
+
     setPrimaryFile(file);
 
-    // Auto-detect mediaType
+    // Auto-detect mediaType (Photo or Video)
     let detected = "image";
-    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
     if (file.type.startsWith("video/") || [".mp4", ".webm", ".mkv", ".mov", ".avi"].includes(ext)) {
       detected = "video";
-    } else if (file.type === "application/pdf" || ext === ".pdf") {
-      detected = "pdf";
     }
+
     setForm((prev) => ({
       ...prev,
       mediaType: detected,
       title: prev.title ? prev.title : file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " "),
     }));
 
-    if (detected === "image" || detected === "video") {
-      setPreviewUrl(URL.createObjectURL(file));
-    } else {
-      setPreviewUrl(null);
-    }
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   // Submit Save
@@ -194,7 +194,7 @@ export default function Gallery() {
     const isNew = !editing._id;
 
     if (isNew && !primaryFile) {
-      return toast.error("Please choose a file to upload (Photo, Video, or PDF).");
+      return toast.error("Please choose a file to upload (Photo or Video).");
     }
 
     if (!form.title.trim()) {
@@ -278,7 +278,7 @@ export default function Gallery() {
     <>
       <PageHeader
         title="Gallery"
-        subtitle="Upload and organize showroom photos, factory videos, and PDF brochures."
+        subtitle="Upload and organize showroom photos and factory videos."
         action={
           <button className="btn-primary" onClick={() => openForm()}>
             <Plus className="h-4 w-4" /> Add media
@@ -351,7 +351,7 @@ export default function Gallery() {
             text={
               search || selectedType !== "all"
                 ? "Try changing your search keywords or filter."
-                : "Add your first photos, videos, or PDF catalogues to showcase them on your website."
+                : "Add your first photos or videos to showcase them on your website."
             }
             action={
               !search && selectedType === "all" && (
@@ -538,8 +538,8 @@ export default function Gallery() {
           {/* File Picker with Live Preview */}
           <div className="sm:col-span-2">
             <Field
-              label={editing?._id ? "Media File (Photo, Video, or PDF)" : "Media File (Photo, Video, or PDF) *"}
-              hint="Allowed: JPG, PNG, WebP, GIF, MP4, WebM, MKV, MOV, and PDF (Max 100MB)."
+              label={editing?._id ? "Media File (Photo or Video)" : "Media File (Photo or Video) *"}
+              hint="Allowed: JPG, PNG, WebP, GIF, MP4, WebM, MKV, MOV (Max 100MB)."
             >
               <div className="mt-1 space-y-3">
                 {/* Existing or New Preview */}
@@ -560,12 +560,6 @@ export default function Gallery() {
                             controls
                             className="h-full w-full object-cover"
                           />
-                        </div>
-                      )}
-                      {form.mediaType === "pdf" && (
-                        <div className="flex h-28 w-44 flex-col items-center justify-center rounded-lg bg-red-100 text-red-600">
-                          <FileText className="h-10 w-10" />
-                          <span className="mt-1 text-xs font-bold uppercase">PDF Document</span>
                         </div>
                       )}
 
@@ -597,15 +591,15 @@ export default function Gallery() {
                 <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 bg-stone-50/70 p-5 text-center transition hover:border-brass-500 hover:bg-brass-50/30">
                   <Upload className="mb-2 h-7 w-7 text-stone-400 group-hover:text-brass-500" />
                   <span className="text-sm font-bold text-stone-700">
-                    {primaryFile || editing?._id ? "Change or replace file" : "Click to select a Photo, Video, or PDF"}
+                    {primaryFile || editing?._id ? "Change or replace file" : "Click to select a Photo or Video"}
                   </span>
                   <span className="mt-0.5 text-xs text-stone-500">
-                    Supports Photos (.jpg, .png, .webp, .gif), Videos (.mp4, .mov, .mkv), and Documents (.pdf)
+                    Supports Photos (.jpg, .png, .webp, .gif) and Videos (.mp4, .mov, .mkv)
                   </span>
                   <input
                     type="file"
                     className="sr-only"
-                    accept="image/*,video/*,application/pdf"
+                    accept="image/*,video/*"
                     onChange={handleFileChange}
                   />
                 </label>
@@ -623,7 +617,6 @@ export default function Gallery() {
             >
               <option value="image">Photo / Image</option>
               <option value="video">Video</option>
-              <option value="pdf">PDF Document / Catalogue</option>
             </select>
           </Field>
 
@@ -661,17 +654,17 @@ export default function Gallery() {
           <Field label="Description" className="sm:col-span-2">
             <textarea
               className="input min-h-[75px]"
-              placeholder="Brief details about this photo, video, or document..."
+              placeholder="Brief details about this photo or video..."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </Field>
 
-          {/* Optional Video/PDF Thumbnail Image */}
-          {(form.mediaType === "video" || form.mediaType === "pdf") && (
+          {/* Optional Video Thumbnail Image */}
+          {form.mediaType === "video" && (
             <Field
               label="Custom Poster Thumbnail (Optional)"
-              hint="Optional image to display before playing video or on PDF card."
+              hint="Optional image to display before playing video."
               className="sm:col-span-2"
             >
               <div className="flex items-center gap-3">

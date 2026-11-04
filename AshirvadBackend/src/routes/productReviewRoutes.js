@@ -30,3 +30,4 @@ router.patch("/admin/:id/status", protect, authorize("admin"), updateReviewStatu
 router.delete("/admin/:id", protect, authorize("admin"), deleteReviewAdmin);
 
 module.exports = router;
+

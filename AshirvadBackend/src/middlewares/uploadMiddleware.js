@@ -20,14 +20,12 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-// Gallery settings: supports Images, Videos, and PDFs
+// Gallery settings: supports Images and Videos
 const galleryAllowedExtensions = [
   // Images
   ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg",
   // Videos
   ".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v",
-  // Documents
-  ".pdf",
 ];
 
 const galleryAllowedMimeTypes = [
@@ -46,9 +44,6 @@ const galleryAllowedMimeTypes = [
   "video/x-msvideo",
   "video/x-m4v",
   "video/ogg",
-  // Documents
-  "application/pdf",
-  "application/x-pdf",
 ];
 
 const galleryFileFilter = (req, file, cb) => {
@@ -60,7 +55,7 @@ const galleryFileFilter = (req, file, cb) => {
   ) {
     return cb(
       new Error(
-        "Only Photos (JPG, PNG, WebP, GIF, SVG), Videos (MP4, WebM, MKV, MOV), and PDF files are allowed."
+        "Only Photos (JPG, PNG, WebP, GIF, SVG) and Videos (MP4, WebM, MKV, MOV) are allowed."
       )
     );
   }

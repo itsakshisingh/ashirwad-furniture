@@ -16,14 +16,6 @@ const detectMediaType = (mimetype = "", filename = "") => {
     return "video";
   }
 
-  if (
-    mimetype === "application/pdf" ||
-    mimetype === "application/x-pdf" ||
-    ext === ".pdf"
-  ) {
-    return "pdf";
-  }
-
   return "image";
 };
 
@@ -191,7 +183,7 @@ const getAllGalleryItemsAdmin = async (req, res) => {
   }
 };
 
-// ADMIN: Create gallery item (Upload Photo, Video, or PDF)
+// ADMIN: Create gallery item (Upload Photo or Video)
 const createGalleryItem = async (req, res) => {
   const uploadedFiles = [];
 
@@ -220,7 +212,7 @@ const createGalleryItem = async (req, res) => {
     if (!primaryFile) {
       return res.status(400).json({
         success: false,
-        message: "Please upload a media file (Photo, Video, or PDF).",
+        message: "Please upload a media file (Photo or Video).",
       });
     }
 
@@ -233,7 +225,7 @@ const createGalleryItem = async (req, res) => {
     }
 
     const detectedType = detectMediaType(primaryFile.mimetype, primaryFile.originalname);
-    const mediaType = (body.mediaType && ["image", "video", "pdf"].includes(body.mediaType.toLowerCase()))
+    const mediaType = (body.mediaType && ["image", "video"].includes(body.mediaType.toLowerCase()))
       ? body.mediaType.toLowerCase()
       : detectedType;
 
@@ -325,7 +317,7 @@ const updateGalleryItem = async (req, res) => {
     // Handle primary file replacement
     if (primaryFile) {
       const detectedType = detectMediaType(primaryFile.mimetype, primaryFile.originalname);
-      item.mediaType = (body.mediaType && ["image", "video", "pdf"].includes(body.mediaType.toLowerCase()))
+      item.mediaType = (body.mediaType && ["image", "video"].includes(body.mediaType.toLowerCase()))
         ? body.mediaType.toLowerCase()
         : detectedType;
 
@@ -338,7 +330,7 @@ const updateGalleryItem = async (req, res) => {
       if (item.mediaType === "image" && !thumbFile) {
         item.thumbnailUrl = item.fileUrl;
       }
-    } else if (body.mediaType && ["image", "video", "pdf"].includes(body.mediaType.toLowerCase())) {
+    } else if (body.mediaType && ["image", "video"].includes(body.mediaType.toLowerCase())) {
       item.mediaType = body.mediaType.toLowerCase();
     }
 
