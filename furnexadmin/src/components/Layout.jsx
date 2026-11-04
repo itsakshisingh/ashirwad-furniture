@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { LayoutDashboard, Image, Layers, Armchair, MessageSquareQuote, LogOut, Menu, X, Images, Award, Star } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import logo from "../Logo.png";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -20,12 +21,15 @@ export default function Layout() {
 
   const sidebar = (
     <div className="flex h-full flex-col bg-ink-900 text-white">
-      <div className="flex items-center justify-between px-5 py-5">
-        <div>
-          <p className="text-lg font-extrabold leading-tight">Ashirwad Furnex</p>
-          <p className="text-xs text-white/60">Admin panel</p>
+      <div className="flex items-center justify-between px-5 py-5 border-b border-white/10">
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={logo} alt="Ashirwad Furnex" className="h-10 w-auto max-w-[42px] object-contain rounded bg-white/10 p-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-base font-extrabold leading-tight truncate">Ashirwad Furnex</p>
+            <p className="text-xs text-white/60">Admin panel</p>
+          </div>
         </div>
-        <button className="rounded p-1 lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu"><X className="h-5 w-5" /></button>
+        <button className="rounded p-1 lg:hidden text-white/70 hover:text-white" onClick={() => setOpen(false)} aria-label="Close menu"><X className="h-5 w-5" /></button>
       </div>
       <nav className="flex-1 space-y-1 px-3">
         {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -57,7 +61,8 @@ export default function Layout() {
       )}
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
         <button onClick={() => setOpen(true)} className="rounded-lg p-1.5 hover:bg-stone-100" aria-label="Open menu"><Menu className="h-6 w-6" /></button>
-        <p className="font-extrabold">Ashirwad Furnex</p>
+        <img src={logo} alt="Ashirwad Furnex" className="h-8 w-auto max-w-[36px] object-contain rounded" />
+        <p className="font-extrabold text-sm sm:text-base">Ashirwad Furnex</p>
       </header>
       <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8"><Outlet /></main>
     </div>

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { errMsg } from "../utils/helpers";
 import { Spinner } from "../components/ui";
+import logo from "../Logo.png";
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -32,7 +33,10 @@ export default function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-ink-900 p-12 text-white lg:flex">
-        <Armchair className="h-10 w-10 text-brass-500" />
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Ashirwad Furnex" className="h-12 w-auto max-w-[50px] object-contain rounded bg-white/10 p-1" />
+          <span className="text-xl font-bold tracking-tight">Ashirwad Furnex</span>
+        </div>
         <div>
           <h1 className="text-4xl font-extrabold leading-tight">Ashirwad Furnex</h1>
           <p className="mt-3 max-w-sm text-white/70">Manage your catalogue, banners and customer inquiries from one place.</p>
@@ -41,6 +45,10 @@ export default function Login() {
       </div>
       <div className="flex items-center justify-center p-6">
         <form onSubmit={submit} className="w-full max-w-sm">
+          <div className="mb-4 flex items-center gap-2.5 lg:hidden">
+            <img src={logo} alt="Ashirwad Furnex" className="h-10 w-auto max-w-[42px] object-contain rounded" />
+            <span className="text-lg font-extrabold">Ashirwad Furnex</span>
+          </div>
           <h2 className="text-2xl font-extrabold">Log in to admin panel</h2>
           <p className="mb-6 mt-1 text-sm text-stone-500">Use your admin email and password.</p>
           <div className="space-y-4">
