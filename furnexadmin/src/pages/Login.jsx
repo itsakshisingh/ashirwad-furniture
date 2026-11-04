@@ -34,7 +34,7 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-ink-900 p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md">
+          <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-2xl bg-white p-2 shadow-md">
             <img src={logo} alt="Ashirwad Furnex" className="h-full w-full object-contain" />
           </div>
           <span className="text-xl font-bold tracking-tight">Ashirwad Furnex</span>
@@ -47,9 +47,11 @@ export default function Login() {
       </div>
       <div className="flex items-center justify-center p-6">
         <form onSubmit={submit} className="w-full max-w-sm">
-          <div className="mb-4 flex items-center gap-2.5 lg:hidden">
-            <img src={logo} alt="Ashirwad Furnex" className="h-10 w-auto max-w-[42px] object-contain rounded" />
-            <span className="text-lg font-extrabold">Ashirwad Furnex</span>
+          <div className="mb-4 flex items-center gap-3 lg:hidden">
+            <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm border border-stone-200">
+              <img src={logo} alt="Ashirwad Furnex" className="h-full w-full object-contain" />
+            </div>
+            <span className="text-xl font-extrabold">Ashirwad Furnex</span>
           </div>
           <h2 className="text-2xl font-extrabold">Log in to admin panel</h2>
           <p className="mb-6 mt-1 text-sm text-stone-500">Use your admin email and password.</p>

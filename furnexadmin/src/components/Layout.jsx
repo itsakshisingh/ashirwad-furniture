@@ -21,9 +21,9 @@ export default function Layout() {
 
   const sidebar = (
     <div className="flex h-full flex-col bg-ink-900 text-white">
-      <div className="flex items-center justify-between px-5 py-5 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-md">
+          <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md">
             <img src={logo} alt="Ashirwad Furnex" className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0">
@@ -63,7 +63,7 @@ export default function Layout() {
       )}
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
         <button onClick={() => setOpen(true)} className="rounded-lg p-1.5 hover:bg-stone-100" aria-label="Open menu"><Menu className="h-6 w-6" /></button>
-        <div className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-stone-50 border border-stone-200 p-1">
+        <div className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg bg-white border border-stone-200 p-1 shadow-sm">
           <img src={logo} alt="Ashirwad Furnex" className="h-full w-full object-contain" />
         </div>
         <p className="font-extrabold text-sm sm:text-base">Ashirwad Furnex</p>
