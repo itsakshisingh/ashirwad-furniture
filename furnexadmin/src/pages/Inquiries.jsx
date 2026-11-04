@@ -54,13 +54,13 @@ export default function Inquiries() {
   return (
     <>
       <PageHeader title="Inquiries" subtitle="Quote requests from customers." />
-      <div className="card overflow-hidden">
-        <div className="space-y-3 border-b border-stone-200 p-4">
+      <div className="overflow-hidden card">
+        <div className="p-4 space-y-3 border-b border-stone-200">
           <div className="relative max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
             <input className="input pl-9" placeholder="Search name, email, phone or product" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 pb-1 overflow-x-auto">
             {["all", ...INQUIRY_STATUSES].map((s) => (
               <button key={s} onClick={() => { setStatus(s); setPage(1); }}
                 className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold capitalize ${status === s ? "bg-ink-800 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}>
@@ -72,14 +72,14 @@ export default function Inquiries() {
 
         {loading ? <PageLoader /> : visible.length === 0 ? <EmptyState title="No inquiries found" text="Change the filter or search to see more." /> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-sm text-left">
               <thead className="bg-stone-50 text-stone-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Customer</th>
                   <th className="hidden px-4 py-3 font-semibold md:table-cell">Product</th>
                   <th className="hidden px-4 py-3 font-semibold sm:table-cell">Date</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -95,12 +95,12 @@ export default function Inquiries() {
                           const img = r.product?.thumbnail || r.productSnapshot?.images?.[0] || r.product?.images?.[0];
                           const src = img ? imgUrl(img) : "";
                           return (
-                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 border border-stone-200">
+                            <div className="relative flex items-center justify-center w-10 h-10 overflow-hidden border rounded-lg shrink-0 bg-stone-100 text-stone-400 border-stone-200">
                               {src ? (
                                 <img
                                   src={src}
                                   alt=""
-                                  className="h-full w-full object-cover"
+                                  className="object-cover w-full h-full"
                                   onError={(e) => {
                                     const fallback = imgUrl("/uploads/products/02-furnex-class-pro-ms-three-seater-school-desk.jpg");
                                     if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
@@ -113,7 +113,7 @@ export default function Inquiries() {
                           );
                         })()}
                         <div className="min-w-0">
-                          <p className="truncate font-medium">{r.productSnapshot?.name || r.product?.name || "—"}</p>
+                          <p className="font-medium truncate">{r.productSnapshot?.name || r.product?.name || "—"}</p>
                           <span className="text-xs text-stone-400">Qty: {r.quantity}</span>
                         </div>
                       </div>
@@ -122,8 +122,8 @@ export default function Inquiries() {
                     <td className="px-4 py-3"><Badge tone={INQUIRY_TONES[r.status]}>{r.status}</Badge></td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <button className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" onClick={() => openRow(r)} aria-label="View"><Eye className="h-4 w-4" /></button>
-                        <button className="rounded-lg p-2 text-red-600 hover:bg-red-50" onClick={() => setDeleting(r)} aria-label="Delete"><Trash2 className="h-4 w-4" /></button>
+                        <button className="p-2 rounded-lg text-stone-600 hover:bg-stone-100" onClick={() => openRow(r)} aria-label="View"><Eye className="w-4 h-4" /></button>
+                        <button className="p-2 text-red-600 rounded-lg hover:bg-red-50" onClick={() => setDeleting(r)} aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -138,19 +138,19 @@ export default function Inquiries() {
       <Modal open={!!open} onClose={() => setOpen(null)} title="Inquiry details" wide
         footer={<>
           <button className="btn-ghost" onClick={() => setOpen(null)}>Close</button>
-          <button className="btn-primary" onClick={save} disabled={saving}>{saving && <Spinner className="h-4 w-4" />}Save changes</button>
+          <button className="btn-primary" onClick={save} disabled={saving}>{saving && <Spinner className="w-4 h-4" />}Save changes</button>
         </>}>
         {open && (
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-4">
-              <div className="rounded-lg bg-stone-50 p-4 text-sm">
+              <div className="p-4 text-sm rounded-lg bg-stone-50">
                 <p className="mb-2 font-bold">Customer</p>
                 <p>{open.customerName || "Guest customer"}</p>
                 {open.customerPhone && <p><a className="text-brass-600 hover:underline" href={`tel:${open.customerPhone}`}>{open.customerPhone}</a></p>}
                 {open.customerEmail && <p><a className="text-brass-600 hover:underline" href={`mailto:${open.customerEmail}`}>{open.customerEmail}</a></p>}
                 {open.customerAddress && <p className="mt-1 text-stone-600">{open.customerAddress}</p>}
               </div>
-              <div className="rounded-lg bg-stone-50 p-4 text-sm">
+              <div className="p-4 text-sm rounded-lg bg-stone-50">
                 <p className="mb-2 font-bold">Product</p>
                 <div className="flex gap-3">
                   {(() => {
@@ -160,7 +160,7 @@ export default function Inquiries() {
                       <img
                         src={imgUrl(img)}
                         alt=""
-                        className="h-16 w-16 rounded-lg object-cover border border-stone-200"
+                        className="object-cover w-16 h-16 border rounded-lg border-stone-200"
                         onError={(e) => {
                           const fallback = imgUrl("/uploads/products/02-furnex-class-pro-ms-three-seater-school-desk.jpg");
                           if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
@@ -177,12 +177,12 @@ export default function Inquiries() {
                 <p className="mt-2 text-stone-600">Quantity: {open.quantity}{open.selectedVariant && ` · ${open.selectedVariant}`}</p>
               </div>
               {open.message && (
-                <div className="rounded-lg bg-stone-50 p-4 text-sm"><p className="mb-1 font-bold">Customer message</p><p className="whitespace-pre-wrap text-stone-700">{open.message}</p></div>
+                <div className="p-4 text-sm rounded-lg bg-stone-50"><p className="mb-1 font-bold">Customer message</p><p className="whitespace-pre-wrap text-stone-700">{open.message}</p></div>
               )}
             </div>
             <div className="space-y-4">
               <Field label="Status">
-                <select className="input capitalize" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                <select className="capitalize input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                   {INQUIRY_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>

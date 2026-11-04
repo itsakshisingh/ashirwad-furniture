@@ -2,6 +2,7 @@
 const mongoose = require("mongoose");
 const fs = require("fs/promises");
 const path = require("path");
+const Media = require("../models/Media");
 const Banner = require("../models/Banner");
 
 const uploadDir = path.join(
@@ -41,7 +42,7 @@ const deleteLocalImages = async (images = []) => {
       // Only delete files from our banner upload directory.
       if (filename !== image.replace(/^.*\//, "")) return;
 
-      await fs.unlink(path.join(uploadDir, filename));
+      await Media.deleteOne({ filename });
     })
   );
 };

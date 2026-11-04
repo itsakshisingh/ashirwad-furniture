@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const fs = require("fs/promises");
 const path = require("path");
+const Media = require("../models/Media");
 const Gallery = require("../models/Gallery");
 
 const uploadDir = path.join(process.cwd(), "uploads", "gallery");
@@ -26,7 +27,7 @@ const deleteLocalFile = async (filePath) => {
   try {
     const filename = path.basename(filePath);
     const fullPath = path.join(uploadDir, filename);
-    await fs.unlink(fullPath);
+    await Media.deleteOne({ filename });
   } catch (err) {
     // Ignore ENOENT (file not found)
     if (err.code !== "ENOENT") {

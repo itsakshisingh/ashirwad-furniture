@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const fs = require("fs/promises");
 const path = require("path");
+const Media = require("../models/Media");
 const Category = require("../models/Category");
 
 const uploadDir = path.join(process.cwd(), "uploads", "categories");
@@ -17,7 +18,7 @@ const deleteLocalImages = async (images = []) => {
 
       if (filename !== image.replace(/^.*\//, "")) return;
 
-      await fs.unlink(path.join(uploadDir, filename));
+      await Media.deleteOne({ filename });
     })
   );
 };
