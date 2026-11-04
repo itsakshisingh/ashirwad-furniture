@@ -34,7 +34,9 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-ink-900 p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Ashirwad Furnex" className="h-12 w-auto max-w-[50px] object-contain rounded bg-white/10 p-1" />
+          <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md">
+            <img src={logo} alt="Ashirwad Furnex" className="h-full w-full object-contain" />
+          </div>
           <span className="text-xl font-bold tracking-tight">Ashirwad Furnex</span>
         </div>
         <div>
