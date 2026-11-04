@@ -59,3 +59,4 @@ router.patch(
 router.delete("/admin/:id", protect, authorize("admin"), deleteGalleryItem);
 
 module.exports = router;
+

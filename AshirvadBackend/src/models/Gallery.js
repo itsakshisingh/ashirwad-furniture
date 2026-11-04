@@ -71,3 +71,4 @@ gallerySchema.index({ displayOrder: 1, createdAt: -1 });
 gallerySchema.index({ mediaType: 1, isActive: 1 });
 
 module.exports = mongoose.model("Gallery", gallerySchema);
+

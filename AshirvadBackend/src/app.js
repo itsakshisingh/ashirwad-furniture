@@ -13,6 +13,7 @@ const inquiryRoutes = require("./routes/inquiryRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const filterRoutes = require("./routes/filterRoutes");
 const galleryRoutes = require("./routes/galleryRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
 
@@ -79,6 +80,8 @@ app.use("/api/v1/inquiries", inquiryRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/filters", filterRoutes);
 app.use("/api/v1/gallery", galleryRoutes);
+app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/stats", reviewRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

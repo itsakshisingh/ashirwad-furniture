@@ -17,6 +17,12 @@ export const galleryApi = {
   getCategories: () => api.get("/gallery/categories"),
 };
 
+export const reviewsApi = {
+  ...crud("/reviews"),
+  seed: (overwrite = false) => api.post("/reviews/admin/seed", { overwrite }),
+};
+export const statsApi = reviewsApi;
+
 export const inquiriesApi = {
   list: (params) => api.get("/inquiries/admin/all", { params: { limit: 1000, ...params } }),
   stats: () => api.get("/inquiries/admin/stats"),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, Image, Layers, Armchair, MessageSquareQuote, LogOut, Menu, X, Images } from "lucide-react";
+import { LayoutDashboard, Image, Layers, Armchair, MessageSquareQuote, LogOut, Menu, X, Images, Award } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/categories", label: "Categories", icon: Layers },
   { to: "/products", label: "Products", icon: Armchair },
   { to: "/gallery", label: "Gallery", icon: Images },
+  { to: "/reviews", label: "Reviews / Stats", icon: Award },
   { to: "/inquiries", label: "Inquiries", icon: MessageSquareQuote },
 ];
 
