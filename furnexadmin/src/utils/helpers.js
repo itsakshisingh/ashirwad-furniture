@@ -44,6 +44,14 @@ export const formatDate = (d) =>
 export const formatPrice = (n, currency = "INR") =>
   n == null || n === "" ? "—" : new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
 
+export function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export const pickItem = (res) => {
   const d = res.data?.data ?? res.data;
   if (d && !d._id && typeof d === "object") {

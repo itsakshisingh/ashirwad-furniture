@@ -12,6 +12,10 @@ export const bannersApi = crud("/banners");
 export const categoriesApi = crud("/categories");
 export const subcategoriesApi = crud("/subcategories");
 export const productsApi = { ...crud("/products"), get: (id) => api.get(`/products/admin/${id}`) };
+export const galleryApi = {
+  ...crud("/gallery"),
+  getCategories: () => api.get("/gallery/categories"),
+};
 
 export const inquiriesApi = {
   list: (params) => api.get("/inquiries/admin/all", { params: { limit: 1000, ...params } }),

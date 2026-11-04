@@ -1,10 +1,9 @@
-
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
-// Common settings
+// Common settings for images
 const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
 
@@ -16,6 +15,54 @@ const fileFilter = (req, file, cb) => {
     !allowedMimeTypes.includes(file.mimetype)
   ) {
     return cb(new Error("Only JPG, PNG and WebP images are allowed."));
+  }
+
+  cb(null, true);
+};
+
+// Gallery settings: supports Images, Videos, and PDFs
+const galleryAllowedExtensions = [
+  // Images
+  ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg",
+  // Videos
+  ".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v",
+  // Documents
+  ".pdf",
+];
+
+const galleryAllowedMimeTypes = [
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "image/pjpeg",
+  // Videos
+  "video/mp4",
+  "video/webm",
+  "video/x-matroska",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-m4v",
+  "video/ogg",
+  // Documents
+  "application/pdf",
+  "application/x-pdf",
+];
+
+const galleryFileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (
+    !galleryAllowedExtensions.includes(ext) ||
+    !galleryAllowedMimeTypes.includes(file.mimetype)
+  ) {
+    return cb(
+      new Error(
+        "Only Photos (JPG, PNG, WebP, GIF, SVG), Videos (MP4, WebM, MKV, MOV), and PDF files are allowed."
+      )
+    );
   }
 
   cb(null, true);
@@ -56,9 +103,20 @@ const uploadCategory = createUpload("categories");
 const uploadSubcategory = createUpload("subcategories");
 const uploadProduct = createUpload("products");
 
+// Dedicated Gallery upload with 100MB limit supporting Image/Video/PDF
+const uploadGallery = multer({
+  storage: createStorage("gallery"),
+  fileFilter: galleryFileFilter,
+  limits: {
+    files: 5,
+    fileSize: 100 * 1024 * 1024, // 100 MB max file size
+  },
+});
+
 module.exports = {
   uploadBanner,
   uploadCategory,
   uploadSubcategory,
   uploadProduct,
+  uploadGallery,
 };

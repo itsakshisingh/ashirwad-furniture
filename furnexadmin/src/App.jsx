@@ -7,6 +7,7 @@ import { BannersPage, CategoriesPage } from "./pages/SimpleResources";
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
 import Inquiries from "./pages/Inquiries";
+import Gallery from "./pages/Gallery";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="products" element={<Products />} />
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id/edit" element={<ProductForm />} />
+          <Route path="gallery" element={<Gallery />} />
           <Route path="inquiries" element={<Inquiries />} />
         </Route>
       </Route>
