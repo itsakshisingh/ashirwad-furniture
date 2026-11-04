@@ -102,6 +102,7 @@ const uploadBanner = createUpload("banners");
 const uploadCategory = createUpload("categories");
 const uploadSubcategory = createUpload("subcategories");
 const uploadProduct = createUpload("products");
+const uploadReview = createUpload("reviews");
 
 // Dedicated Gallery upload with 100MB limit supporting Image/Video/PDF
 const uploadGallery = multer({
@@ -119,4 +120,5 @@ module.exports = {
   uploadSubcategory,
   uploadProduct,
   uploadGallery,
+  uploadReview,
 };

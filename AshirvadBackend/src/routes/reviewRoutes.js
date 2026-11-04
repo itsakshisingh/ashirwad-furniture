@@ -28,3 +28,4 @@ router.delete("/admin/:id", protect, authorize("admin"), deleteReview);
 router.post("/admin/seed", protect, authorize("admin"), seedReviews);
 
 module.exports = router;
+

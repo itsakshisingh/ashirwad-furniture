@@ -9,6 +9,7 @@ import ProductForm from "./pages/ProductForm";
 import Inquiries from "./pages/Inquiries";
 import Gallery from "./pages/Gallery";
 import Reviews from "./pages/Reviews";
+import ProductReviews from "./pages/ProductReviews";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="gallery" element={<Gallery />} />
+          <Route path="product-reviews" element={<ProductReviews />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="stats" element={<Reviews />} />
           <Route path="inquiries" element={<Inquiries />} />

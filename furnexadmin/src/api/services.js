@@ -23,6 +23,11 @@ export const reviewsApi = {
 };
 export const statsApi = reviewsApi;
 
+export const productReviewsApi = {
+  ...crud("/product-reviews"),
+  getByProduct: (productId) => api.get(`/product-reviews/product/${productId}`),
+};
+
 export const inquiriesApi = {
   list: (params) => api.get("/inquiries/admin/all", { params: { limit: 1000, ...params } }),
   stats: () => api.get("/inquiries/admin/stats"),

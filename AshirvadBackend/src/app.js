@@ -14,6 +14,7 @@ const searchRoutes = require("./routes/searchRoutes");
 const filterRoutes = require("./routes/filterRoutes");
 const galleryRoutes = require("./routes/galleryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const productReviewRoutes = require("./routes/productReviewRoutes");
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use("/api/v1/filters", filterRoutes);
 app.use("/api/v1/gallery", galleryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/stats", reviewRoutes);
+app.use("/api/v1/product-reviews", productReviewRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
