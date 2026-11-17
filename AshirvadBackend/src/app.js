@@ -16,6 +16,8 @@ const galleryRoutes = require("./routes/galleryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const productReviewRoutes = require("./routes/productReviewRoutes");
 const blogRoutes = require("./routes/blogRoutes");
+const sitemapRoutes = require("./routes/sitemapRoutes");
+const { getSitemapXml } = require("./controllers/sitemapController");
 const { serveMedia } = require("./controllers/mediaController");
 
 const app = express();
@@ -61,6 +63,9 @@ app.get("/product-images/:filename", serveMedia);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/product-images", express.static(path.join(__dirname, "../uploads/products")));
 
+// Dynamic Sitemap.xml endpoint at root domain
+app.get("/sitemap.xml", getSitemapXml);
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -95,6 +100,7 @@ app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/stats", reviewRoutes);
 app.use("/api/v1/product-reviews", productReviewRoutes);
 app.use("/api/v1/blogs", blogRoutes);
+app.use("/api/v1/sitemap", sitemapRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
