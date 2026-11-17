@@ -43,11 +43,8 @@ const formatDate = (date) => {
  */
 const getSitemapXml = async (req, res) => {
   try {
-    // Determine base domain (from env or request origin/host)
-    const host = req.get("host");
-    const protocol = req.protocol === "https" || req.get("x-forwarded-proto") === "https" ? "https" : "http";
-    const defaultOrigin = process.env.SITE_URL || process.env.CLIENT_URL || `${protocol}://${host}`;
-    const baseUrl = defaultOrigin.replace(/\/$/, "");
+    // Production main website domain for public URLs (defaults to https://ashirwadfurnex.com)
+    const baseUrl = (process.env.SITE_URL || "https://ashirwadfurnex.com").replace(/\/$/, "");
 
     // 1. Static Core Pages
     const staticPages = [
@@ -85,8 +82,9 @@ const getSitemapXml = async (req, res) => {
     ]);
 
     // Build XML string with XSL stylesheet for beautiful UI styling in browsers
+    // Note: Use relative /sitemap.xsl so browsers load the stylesheet from whichever server served sitemap.xml without CORS issues
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<?xml-stylesheet type="text/xsl" href="${baseUrl}/sitemap.xsl"?>\n`;
+    xml += `<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
     xml += `        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
     xml += `        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9\n`;
