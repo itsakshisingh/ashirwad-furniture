@@ -12,6 +12,7 @@ import {
   Filter,
 } from "lucide-react";
 import { blogsApi } from "../api/services";
+import { imgUrl } from "../utils/helpers";
 
 export default function Blogs() {
   const [blogs, setBlogs] = useState([]);
@@ -193,7 +194,7 @@ export default function Blogs() {
                         <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg bg-sand-100 border border-ink-100">
                           {blog.featuredImage ? (
                             <img
-                              src={blog.featuredImage}
+                              src={imgUrl(blog.featuredImage)}
                               alt={blog.title}
                               className="h-full w-full object-cover"
                             />

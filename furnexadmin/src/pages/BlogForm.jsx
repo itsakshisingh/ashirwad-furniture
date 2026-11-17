@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { blogsApi } from "../api/services";
+import { imgUrl } from "../utils/helpers";
 
 export default function BlogForm() {
   const { id } = useParams();
@@ -90,7 +91,7 @@ export default function BlogForm() {
               faqs: Array.isArray(blog.faqs) ? blog.faqs : [],
             });
             if (blog.featuredImage) {
-              setImagePreview(blog.featuredImage);
+              setImagePreview(imgUrl(blog.featuredImage));
             }
           }
         })
