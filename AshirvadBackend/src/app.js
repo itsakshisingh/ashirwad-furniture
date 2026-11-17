@@ -18,6 +18,7 @@ const productReviewRoutes = require("./routes/productReviewRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const sitemapRoutes = require("./routes/sitemapRoutes");
 const { getSitemapXml } = require("./controllers/sitemapController");
+const { getSitemapXsl } = require("./controllers/sitemapXslController");
 const { serveMedia } = require("./controllers/mediaController");
 
 const app = express();
@@ -65,6 +66,7 @@ app.use("/product-images", express.static(path.join(__dirname, "../uploads/produ
 
 // Dynamic Sitemap.xml endpoint at root domain
 app.get("/sitemap.xml", getSitemapXml);
+app.get("/sitemap.xsl", getSitemapXsl);
 
 app.get("/", (req, res) => {
   res.json({
