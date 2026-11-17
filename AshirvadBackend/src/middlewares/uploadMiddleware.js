@@ -143,6 +143,7 @@ const uploadCategory = createMongoUpload("categories");
 const uploadSubcategory = createMongoUpload("subcategories");
 const uploadProduct = createMongoUpload("products");
 const uploadReview = createMongoUpload("reviews");
+const uploadBlog = createMongoUpload("blogs");
 const uploadGallery = createMongoUpload("gallery", {
   fileFilter: galleryFileFilter,
   limits: {
@@ -158,5 +159,6 @@ module.exports = {
   uploadProduct,
   uploadGallery,
   uploadReview,
+  uploadBlog,
   saveToMongo,
 };

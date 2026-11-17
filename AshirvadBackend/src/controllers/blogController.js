@@ -1,0 +1,520 @@
+const Blog = require("../models/Blog");
+const Media = require("../models/Media");
+const path = require("path");
+
+// Helper to generate slug
+const slugify = (text = "") =>
+  text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+// Helper to parse keywords and faqs from JSON string or Array
+const parseField = (value, fallback = []) => {
+  if (!value) return fallback;
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Fallback: split comma-separated strings for keywords
+      return value.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return fallback;
+};
+
+/**
+ * Public: Get published blogs (with pagination, category, isFeatured, search)
+ * GET /api/v1/blogs
+ */
+const getBlogs = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const filter = { status: "published" };
+
+    if (req.query.category && req.query.category !== "all") {
+      filter.category = { $regex: new RegExp(`^${req.query.category.trim()}$`, "i") };
+    }
+
+    if (req.query.isFeatured !== undefined && req.query.isFeatured !== "") {
+      filter.isFeatured = req.query.isFeatured === "true" || req.query.isFeatured === true;
+    }
+
+    if (req.query.q) {
+      const searchRegex = new RegExp(req.query.q.trim(), "i");
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex },
+        { keywords: searchRegex },
+      ];
+    }
+
+    const [blogs, count] = await Promise.all([
+      Blog.find(filter)
+        .sort({ isFeatured: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Blog.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: blogs.length,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit) || 1,
+      data: blogs,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch blogs",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Public: Get single blog by slug
+ * GET /api/v1/blogs/slug/:slug
+ */
+const getBlogBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const blog = await Blog.findOneAndUpdate(
+      { slug: slug.toLowerCase().trim(), status: "published" },
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: blog,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch blog",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Public: Get all distinct categories
+ * GET /api/v1/blogs/categories
+ */
+const getBlogCategories = async (req, res) => {
+  try {
+    const categories = await Blog.distinct("category", { status: "published" });
+    res.status(200).json({
+      success: true,
+      count: categories.length,
+      data: categories.filter(Boolean),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch blog categories",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Get all blogs with filters & pagination
+ * GET /api/v1/blogs/admin/all
+ */
+const getAllBlogsAdmin = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+
+    if (req.query.status && req.query.status !== "all") {
+      filter.status = req.query.status;
+    }
+
+    if (req.query.category && req.query.category !== "all") {
+      filter.category = { $regex: new RegExp(`^${req.query.category.trim()}$`, "i") };
+    }
+
+    if (req.query.isFeatured !== undefined && req.query.isFeatured !== "") {
+      filter.isFeatured = req.query.isFeatured === "true" || req.query.isFeatured === true;
+    }
+
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search.trim(), "i");
+      filter.$or = [
+        { title: searchRegex },
+        { slug: searchRegex },
+        { category: searchRegex },
+        { author: searchRegex },
+      ];
+    }
+
+    const [blogs, count] = await Promise.all([
+      Blog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Blog.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: blogs.length,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit) || 1,
+      data: blogs,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch blogs for admin",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Public/Admin: Get blog by ID
+ * GET /api/v1/blogs/:id
+ */
+const getBlogById = async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: blog,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch blog",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Create a new blog
+ * POST /api/v1/blogs/admin
+ */
+const createBlog = async (req, res) => {
+  try {
+    const {
+      title,
+      slug: customSlug,
+      metaTitle,
+      metaDescription,
+      category,
+      description,
+      author,
+      keywords,
+      isFeatured,
+      status,
+      featuredImage: bodyFeaturedImage,
+      faqs,
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Blog title is required",
+      });
+    }
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Blog content/description is required",
+      });
+    }
+
+    // Resolve slug
+    let slug = slugify(customSlug || title);
+    if (!slug) slug = `blog-${Date.now()}`;
+
+    // Ensure unique slug
+    let existing = await Blog.findOne({ slug });
+    if (existing) {
+      slug = `${slug}-${Date.now()}`;
+    }
+
+    // Handle featuredImage: uploaded file or string URL
+    let featuredImage = "";
+    if (req.file) {
+      featuredImage = req.file.fileUrl || `/uploads/blogs/${req.file.filename}`;
+    } else if (bodyFeaturedImage) {
+      featuredImage = String(bodyFeaturedImage).trim();
+    }
+
+    const blog = await Blog.create({
+      title: title.trim(),
+      slug,
+      metaTitle: metaTitle ? metaTitle.trim() : title.trim(),
+      metaDescription: metaDescription ? metaDescription.trim() : "",
+      category: category ? category.trim() : "General",
+      description: description.trim(),
+      author: author ? author.trim() : "Admin",
+      keywords: parseField(keywords),
+      isFeatured: isFeatured === true || isFeatured === "true",
+      status: ["draft", "published", "archived"].includes(status) ? status : "published",
+      featuredImage,
+      faqs: parseField(faqs),
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Blog created successfully",
+      data: blog,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to create blog",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Update blog
+ * PUT / PATCH /api/v1/blogs/admin/:id
+ */
+const updateBlog = async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    const {
+      title,
+      slug: customSlug,
+      metaTitle,
+      metaDescription,
+      category,
+      description,
+      author,
+      keywords,
+      isFeatured,
+      status,
+      featuredImage: bodyFeaturedImage,
+      faqs,
+    } = req.body;
+
+    if (title !== undefined) blog.title = title.trim();
+    if (metaTitle !== undefined) blog.metaTitle = metaTitle.trim();
+    if (metaDescription !== undefined) blog.metaDescription = metaDescription.trim();
+    if (category !== undefined) blog.category = category.trim();
+    if (description !== undefined) blog.description = description.trim();
+    if (author !== undefined) blog.author = author.trim();
+
+    if (keywords !== undefined) {
+      blog.keywords = parseField(keywords);
+    }
+
+    if (faqs !== undefined) {
+      blog.faqs = parseField(faqs);
+    }
+
+    if (isFeatured !== undefined) {
+      blog.isFeatured = isFeatured === true || isFeatured === "true";
+    }
+
+    if (status !== undefined && ["draft", "published", "archived"].includes(status)) {
+      blog.status = status;
+    }
+
+    // Slug update with uniqueness check
+    if (customSlug) {
+      const newSlug = slugify(customSlug);
+      if (newSlug && newSlug !== blog.slug) {
+        const existing = await Blog.findOne({ slug: newSlug, _id: { $ne: blog._id } });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: `Slug "${newSlug}" is already taken by another blog.`,
+          });
+        }
+        blog.slug = newSlug;
+      }
+    }
+
+    // Handle image replacement
+    if (req.file) {
+      // Delete old media from Mongo if exists
+      if (blog.featuredImage) {
+        const oldFilename = path.basename(blog.featuredImage);
+        await Media.deleteOne({ filename: oldFilename }).catch(() => {});
+      }
+      blog.featuredImage = req.file.fileUrl || `/uploads/blogs/${req.file.filename}`;
+    } else if (bodyFeaturedImage !== undefined) {
+      blog.featuredImage = String(bodyFeaturedImage).trim();
+    }
+
+    await blog.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Blog updated successfully",
+      data: blog,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to update blog",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Update status
+ * PATCH /api/v1/blogs/admin/:id/status
+ */
+const updateBlogStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status || !["draft", "published", "archived"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid status ('draft', 'published', 'archived') is required",
+      });
+    }
+
+    const blog = await Blog.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Blog status updated to ${status}`,
+      data: blog,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to update blog status",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Toggle featured
+ * PATCH /api/v1/blogs/admin/:id/featured
+ */
+const toggleBlogFeatured = async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    blog.isFeatured = !blog.isFeatured;
+    await blog.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Blog is now ${blog.isFeatured ? "featured" : "unfeatured"}`,
+      data: blog,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to toggle featured status",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Admin: Delete blog
+ * DELETE /api/v1/blogs/admin/:id
+ */
+const deleteBlog = async (req, res) => {
+  try {
+    const blog = await Blog.findByIdAndDelete(req.params.id);
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found",
+      });
+    }
+
+    // Clean up image from MongoDB if exists
+    if (blog.featuredImage) {
+      const filename = path.basename(blog.featuredImage);
+      await Media.deleteOne({ filename }).catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Blog deleted successfully",
+      data: blog,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete blog",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  getBlogs,
+  getBlogBySlug,
+  getBlogCategories,
+  getAllBlogsAdmin,
+  getBlogById,
+  createBlog,
+  updateBlog,
+  updateBlogStatus,
+  toggleBlogFeatured,
+  deleteBlog,
+};

@@ -15,6 +15,7 @@ const filterRoutes = require("./routes/filterRoutes");
 const galleryRoutes = require("./routes/galleryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const productReviewRoutes = require("./routes/productReviewRoutes");
+const blogRoutes = require("./routes/blogRoutes");
 const { serveMedia } = require("./controllers/mediaController");
 
 const app = express();
@@ -93,6 +94,7 @@ app.use("/api/v1/gallery", galleryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/stats", reviewRoutes);
 app.use("/api/v1/product-reviews", productReviewRoutes);
+app.use("/api/v1/blogs", blogRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
