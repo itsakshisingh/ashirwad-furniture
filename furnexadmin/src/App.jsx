@@ -10,6 +10,8 @@ import Inquiries from "./pages/Inquiries";
 import Gallery from "./pages/Gallery";
 import Reviews from "./pages/Reviews";
 import ProductReviews from "./pages/ProductReviews";
+import Blogs from "./pages/Blogs";
+import BlogForm from "./pages/BlogForm";
 
 export default function App() {
   return (
@@ -23,6 +25,9 @@ export default function App() {
           <Route path="products" element={<Products />} />
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id/edit" element={<ProductForm />} />
+          <Route path="blogs" element={<Blogs />} />
+          <Route path="blogs/new" element={<BlogForm />} />
+          <Route path="blogs/:id/edit" element={<BlogForm />} />
           <Route path="gallery" element={<Gallery />} />
           <Route path="product-reviews" element={<ProductReviews />} />
           <Route path="reviews" element={<Reviews />} />

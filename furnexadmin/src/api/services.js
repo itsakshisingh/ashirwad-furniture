@@ -35,6 +35,15 @@ export const inquiriesApi = {
   remove: (id) => api.delete(`/inquiries/admin/${id}`),
 };
 
+export const blogsApi = {
+  ...crud("/blogs"),
+  get: (id) => api.get(`/blogs/${id}`),
+  getBySlug: (slug) => api.get(`/blogs/slug/${slug}`),
+  getCategories: () => api.get("/blogs/categories"),
+  toggleFeatured: (id) => api.patch(`/blogs/admin/${id}/featured`),
+  updateStatus: (id, status) => api.patch(`/blogs/admin/${id}/status`, { status }),
+};
+
 export const authApi = {
   adminLogin: (body) => api.post("/auth/admin/login", body),
   me: () => api.get("/auth/admin/me"),
