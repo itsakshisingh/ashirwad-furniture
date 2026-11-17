@@ -46,16 +46,17 @@ const getSitemapXml = async (req, res) => {
     // Production main website domain for public URLs (defaults to https://ashirwadfurnex.com)
     const baseUrl = (process.env.SITE_URL || "https://ashirwadfurnex.com").replace(/\/$/, "");
 
-    // 1. Static Core Pages
+    // 1. Static Core Pages (matching React Native / Expo web client routing)
     const staticPages = [
       { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily" },
-      { url: `${baseUrl}/about`, priority: "0.8", changefreq: "monthly" },
+      { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly" },
       { url: `${baseUrl}/products`, priority: "0.9", changefreq: "daily" },
-      { url: `${baseUrl}/categories`, priority: "0.8", changefreq: "weekly" },
-      { url: `${baseUrl}/blogs`, priority: "0.9", changefreq: "daily" },
-      { url: `${baseUrl}/gallery`, priority: "0.7", changefreq: "weekly" },
-      { url: `${baseUrl}/reviews`, priority: "0.6", changefreq: "weekly" },
-      { url: `${baseUrl}/contact`, priority: "0.8", changefreq: "monthly" },
+      { url: `${baseUrl}/catalog/categories`, priority: "0.8", changefreq: "weekly" },
+      { url: `${baseUrl}/projects`, priority: "0.7", changefreq: "weekly" },
+      { url: `${baseUrl}/our-happy-customers`, priority: "0.7", changefreq: "weekly" },
+      { url: `${baseUrl}/company-certifications`, priority: "0.7", changefreq: "monthly" },
+      { url: `${baseUrl}/quote`, priority: "0.8", changefreq: "weekly" },
+      { url: `${baseUrl}/search`, priority: "0.6", changefreq: "weekly" },
     ];
 
     // 2. Fetch Active Data in parallel from MongoDB
@@ -66,17 +67,17 @@ const getSitemapXml = async (req, res) => {
         .lean(),
 
       // Only active products
-      Product.find({ isActive: { $ne: false } }, "slug updatedAt createdAt")
+      Product.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id")
         .sort({ updatedAt: -1 })
         .lean(),
 
       // Only active categories
-      Category.find({ isActive: { $ne: false } }, "slug updatedAt createdAt")
+      Category.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
 
       // Only active subcategories
-      Subcategory.find({ isActive: { $ne: false } }, "slug updatedAt createdAt")
+      Subcategory.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id category")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
     ]);
@@ -114,24 +115,26 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // Append Products: /product/:slug (or /products/:slug)
+    // Append Products: Client website router expects /products/:productId
     for (const p of products) {
-      if (!p.slug) continue;
+      const prodIdentifier = p._id ? String(p._id) : p.slug;
+      if (!prodIdentifier) continue;
       const lastmod = formatDate(p.updatedAt || p.createdAt);
       xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/product/${p.slug}`)}</loc>\n`;
+      xml += `    <loc>${escapeXml(`${baseUrl}/products/${prodIdentifier}`)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
       xml += `  </url>\n`;
     }
 
-    // Append Categories: /category/:slug
+    // Append Categories: Client router expects /categories/:categoryId
     for (const c of categories) {
-      if (!c.slug) continue;
+      const catIdentifier = c._id ? String(c._id) : c.slug;
+      if (!catIdentifier) continue;
       const lastmod = formatDate(c.updatedAt || c.createdAt);
       xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/category/${c.slug}`)}</loc>\n`;
+      xml += `    <loc>${escapeXml(`${baseUrl}/categories/${catIdentifier}`)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.7</priority>\n`;
