@@ -142,6 +142,11 @@ const uploadBanner = createMongoUpload("banners");
 const uploadCategory = createMongoUpload("categories");
 const uploadSubcategory = createMongoUpload("subcategories");
 const uploadProduct = createMongoUpload("products");
+// Product with color variants: allows uploading main images + variant images in one request
+// Field names: "images" (main), "variant_0_images", "variant_1_images", ... etc.
+const uploadProductWithVariants = createMongoUpload("products", {
+  limits: { files: 60, fileSize: 10 * 1024 * 1024 },
+});
 const uploadReview = createMongoUpload("reviews");
 const uploadBlog = createMongoUpload("blogs");
 const uploadGallery = createMongoUpload("gallery", {
@@ -157,6 +162,7 @@ module.exports = {
   uploadCategory,
   uploadSubcategory,
   uploadProduct,
+  uploadProductWithVariants,
   uploadGallery,
   uploadReview,
   uploadBlog,

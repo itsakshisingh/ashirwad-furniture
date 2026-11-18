@@ -8,21 +8,95 @@ const Subcategory = require("../models/Subcategory");
 
 const uploadDir = path.join(process.cwd(), "uploads", "products");
 
-const getUploadedImages = (req) =>
-  (req.files || []).map((file) => `/uploads/products/${file.filename}`);
+// Extract main product images (field: "images")
+const getMainUploadedImages = (req) => {
+  if (!req.files) return [];
+  const list = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+  return list
+    .filter((file) => file.fieldname === "images")
+    .map((file) => file.fileUrl || `/uploads/products/${file.filename}`);
+};
 
+// Extract images uploaded for a specific color variant (field: "variant_{index}_images")
+const getVariantUploadedImages = (req, index) => {
+  if (!req.files) return [];
+  const list = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+  const fieldName = `variant_${index}_images`;
+  return list
+    .filter((file) => file.fieldname === fieldName)
+    .map((file) => file.fileUrl || `/uploads/products/${file.filename}`);
+};
+
+// Extract all uploaded image URLs in current request (for cleanup on error)
+const getAllUploadedImages = (req) => {
+  if (!req.files) return [];
+  const list = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+  return list.map((file) => file.fileUrl || `/uploads/products/${file.filename}`);
+};
+
+// Delete media docs stored in MongoDB
 const deleteLocalImages = async (images = []) => {
   await Promise.allSettled(
     images.map(async (image) => {
       if (typeof image !== "string") return;
-
       const filename = path.basename(image);
-
-      if (filename !== image.replace(/^.*\//, "")) return;
-
       await Media.deleteOne({ filename });
     })
   );
+};
+
+// Parse and process color variants with newly uploaded variant files
+const parseColorVariants = (rawVariants, req) => {
+  let parsed = [];
+  if (rawVariants) {
+    try {
+      parsed = typeof rawVariants === "string" ? JSON.parse(rawVariants) : rawVariants;
+    } catch {
+      parsed = [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  const processed = parsed.map((variant, idx) => {
+    const existingImages = Array.isArray(variant.images) ? variant.images : [];
+    const newUploaded = getVariantUploadedImages(req, idx);
+    const combinedImages = [...existingImages, ...newUploaded];
+
+    return {
+      colorName: variant.colorName ? String(variant.colorName).trim() : "",
+      colorHex: variant.colorHex ? String(variant.colorHex).trim() : "#000000",
+      images: combinedImages,
+      sku: variant.sku ? String(variant.sku).trim() : "",
+      price:
+        variant.price !== undefined && variant.price !== "" && variant.price !== null
+          ? Number(variant.price)
+          : null,
+      mrp:
+        variant.mrp !== undefined && variant.mrp !== "" && variant.mrp !== null
+          ? Number(variant.mrp)
+          : null,
+      stockQuantity:
+        variant.stockQuantity !== undefined &&
+        variant.stockQuantity !== "" &&
+        variant.stockQuantity !== null
+          ? Number(variant.stockQuantity)
+          : 0,
+      stockStatus: ["in_stock", "low_stock", "out_of_stock"].includes(variant.stockStatus)
+        ? variant.stockStatus
+        : "in_stock",
+      specifications: variant.specifications || {},
+      description: variant.description ? String(variant.description) : "",
+      isDefault: variant.isDefault === true || variant.isDefault === "true",
+      isActive: variant.isActive !== false && variant.isActive !== "false",
+    };
+  });
+
+  if (processed.length > 0 && !processed.some((v) => v.isDefault)) {
+    processed[0].isDefault = true;
+  }
+
+  return processed;
 };
 
 const validateProduct = (data, partial = false) => {
@@ -278,16 +352,17 @@ const getProductById = async (req, res) => {
   }
 };
 
-// ADMIN: Create product with multiple images
+// ADMIN: Create product with multiple images and color variants
 const createProduct = async (req, res) => {
-  const uploadedImages = getUploadedImages(req);
+  const uploadedImages = getMainUploadedImages(req);
+  const allNewFiles = getAllUploadedImages(req);
 
   try {
     const body = req.body;
     const errors = validateProduct(body);
 
     if (errors.length) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(400).json({
         success: false,
@@ -301,7 +376,7 @@ const createProduct = async (req, res) => {
       slug: body.slug.trim().toLowerCase(),
     });
     if (existingProduct) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(400).json({
         success: false,
@@ -314,7 +389,7 @@ const createProduct = async (req, res) => {
       sku: body.sku.trim().toUpperCase(),
     });
     if (existingSKU) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(400).json({
         success: false,
@@ -325,7 +400,7 @@ const createProduct = async (req, res) => {
     // Validate category exists
     const categoryExists = await Category.findById(body.category);
     if (!categoryExists) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(404).json({
         success: false,
@@ -337,7 +412,7 @@ const createProduct = async (req, res) => {
     if (body.subcategory && body.subcategory !== "null" && body.subcategory !== "") {
       const subcategoryExists = await Subcategory.findById(body.subcategory);
       if (!subcategoryExists) {
-        await deleteLocalImages(uploadedImages);
+        await deleteLocalImages(allNewFiles);
 
         return res.status(404).json({
           success: false,
@@ -350,10 +425,33 @@ const createProduct = async (req, res) => {
     const pricing = typeof body.pricing === "string" ? JSON.parse(body.pricing) : body.pricing || {};
     const inventory = typeof body.inventory === "string" ? JSON.parse(body.inventory) : body.inventory || {};
     const specifications = typeof body.specifications === "string" ? JSON.parse(body.specifications) : body.specifications || {};
-    const variants = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants || [];
     const delivery = typeof body.delivery === "string" ? JSON.parse(body.delivery) : body.delivery || {};
     const tags = typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags || [];
     const seo = typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo || {};
+
+    // Process Color Variants
+    const colorVariants = parseColorVariants(body.colorVariants || body.variants, req);
+
+    // Legacy variants (if sent as { name, options })
+    let legacyVariants = [];
+    if (body.variants) {
+      try {
+        const v = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants;
+        if (Array.isArray(v) && v.length > 0 && v[0].options) {
+          legacyVariants = v;
+        }
+      } catch {}
+    }
+
+    // Default thumbnail logic
+    let thumbnail = body.thumbnail || "";
+    if (!thumbnail) {
+      if (uploadedImages.length > 0) {
+        thumbnail = uploadedImages[0];
+      } else if (colorVariants.length > 0 && colorVariants[0].images.length > 0) {
+        thumbnail = colorVariants[0].images[0];
+      }
+    }
 
     const product = await Product.create({
       name: body.name.trim(),
@@ -367,7 +465,7 @@ const createProduct = async (req, res) => {
           ? body.subcategory
           : null,
       images: uploadedImages,
-      thumbnail: body.thumbnail || (uploadedImages.length > 0 ? uploadedImages[0] : ""),
+      thumbnail,
       pricing: {
         price: Number(body.price || pricing.price),
         salePrice: pricing.salePrice ? Number(pricing.salePrice) : null,
@@ -381,7 +479,8 @@ const createProduct = async (req, res) => {
         allowBackorder: inventory.allowBackorder === true || inventory.allowBackorder === "true",
       },
       specifications,
-      variants,
+      colorVariants,
+      variants: legacyVariants,
       delivery,
       tags,
       isFeatured: body.isFeatured === true || body.isFeatured === "true",
@@ -404,7 +503,7 @@ const createProduct = async (req, res) => {
       data: populatedProduct,
     });
   } catch (error) {
-    await deleteLocalImages(uploadedImages);
+    await deleteLocalImages(allNewFiles);
 
     console.error("Create product:", error.message);
 
@@ -424,11 +523,12 @@ const createProduct = async (req, res) => {
 
 // ADMIN: Update product
 const updateProduct = async (req, res) => {
-  const uploadedImages = getUploadedImages(req);
+  const uploadedImages = getMainUploadedImages(req);
+  const allNewFiles = getAllUploadedImages(req);
 
   try {
     if (!mongoose.isValidObjectId(req.params.id)) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(400).json({
         success: false,
@@ -439,7 +539,7 @@ const updateProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(404).json({
         success: false,
@@ -451,7 +551,7 @@ const updateProduct = async (req, res) => {
     const errors = validateProduct(body, true);
 
     if (errors.length) {
-      await deleteLocalImages(uploadedImages);
+      await deleteLocalImages(allNewFiles);
 
       return res.status(400).json({
         success: false,
@@ -468,7 +568,7 @@ const updateProduct = async (req, res) => {
       });
 
       if (existingProduct) {
-        await deleteLocalImages(uploadedImages);
+        await deleteLocalImages(allNewFiles);
 
         return res.status(400).json({
           success: false,
@@ -485,7 +585,7 @@ const updateProduct = async (req, res) => {
       });
 
       if (existingSKU) {
-        await deleteLocalImages(uploadedImages);
+        await deleteLocalImages(allNewFiles);
 
         return res.status(400).json({
           success: false,
@@ -507,7 +607,6 @@ const updateProduct = async (req, res) => {
           ? body.subcategory
           : null;
     }
-    if (body.thumbnail !== undefined) product.thumbnail = body.thumbnail;
 
     // Update nested objects
     if (body.pricing) {
@@ -526,8 +625,19 @@ const updateProduct = async (req, res) => {
       product.specifications = { ...product.specifications, ...specifications };
     }
 
-    if (body.variants) {
-      product.variants = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants;
+    // Update Color Variants
+    if (body.colorVariants !== undefined) {
+      product.colorVariants = parseColorVariants(body.colorVariants, req);
+    }
+
+    // Update Legacy Variants if provided
+    if (body.variants !== undefined) {
+      try {
+        const v = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants;
+        if (Array.isArray(v) && v.length > 0 && v[0].options) {
+          product.variants = v;
+        }
+      } catch {}
     }
 
     if (body.delivery) {
@@ -560,21 +670,36 @@ const updateProduct = async (req, res) => {
       product.displayOrder = Number(body.displayOrder);
     }
 
-    const oldImages = [...product.images];
-
-    // Only replace existing images when new files are uploaded
-    if (uploadedImages.length > 0) {
-      product.images = uploadedImages;
-      if (!body.thumbnail) {
-        product.thumbnail = uploadedImages[0];
+    // Main product images update logic
+    let existingMainImages = [];
+    if (body.existingImages !== undefined) {
+      try {
+        existingMainImages = typeof body.existingImages === "string" ? JSON.parse(body.existingImages) : body.existingImages;
+      } catch {
+        existingMainImages = [];
       }
+    } else if (uploadedImages.length === 0) {
+      existingMainImages = product.images || [];
+    }
+
+    const finalMainImages = [
+      ...(Array.isArray(existingMainImages) ? existingMainImages : []),
+      ...uploadedImages,
+    ];
+
+    if (finalMainImages.length > 0) {
+      product.images = finalMainImages;
+      if (body.thumbnail) {
+        product.thumbnail = body.thumbnail;
+      } else if (!product.thumbnail || !finalMainImages.includes(product.thumbnail)) {
+        product.thumbnail = finalMainImages[0];
+      }
+    } else if (body.existingImages !== undefined && uploadedImages.length === 0) {
+      product.images = [];
+      product.thumbnail = "";
     }
 
     await product.save();
-
-    if (uploadedImages.length > 0) {
-      await deleteLocalImages(oldImages);
-    }
 
     const updatedProduct = await Product.findById(product._id)
       .populate("category", "name slug")
@@ -586,7 +711,7 @@ const updateProduct = async (req, res) => {
       data: updatedProduct,
     });
   } catch (error) {
-    await deleteLocalImages(uploadedImages);
+    await deleteLocalImages(allNewFiles);
 
     console.error("Update product:", error.message);
 
@@ -663,7 +788,17 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    await deleteLocalImages(product.images);
+    // Collect all images including variant images for deletion
+    const allImagesToDelete = [...(product.images || [])];
+    if (Array.isArray(product.colorVariants)) {
+      product.colorVariants.forEach((v) => {
+        if (Array.isArray(v.images)) {
+          allImagesToDelete.push(...v.images);
+        }
+      });
+    }
+
+    await deleteLocalImages(allImagesToDelete);
 
     await product.deleteOne();
 

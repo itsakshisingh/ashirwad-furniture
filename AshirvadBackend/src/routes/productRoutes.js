@@ -15,7 +15,10 @@ const {
 
 const { protect, authorize } = require("../middlewares/authMiddleware");
 
-const { uploadProduct } = require("../middlewares/uploadMiddleware");
+const {
+  uploadProduct,
+  uploadProductWithVariants,
+} = require("../middlewares/uploadMiddleware");
 
 // Public APIs
 router.get("/", getActiveProducts);
@@ -31,7 +34,7 @@ router.post(
   "/admin",
   protect,
   authorize("admin"),
-  uploadProduct.array("images", 10),
+  uploadProductWithVariants.any(),
   createProduct
 );
 
@@ -46,7 +49,7 @@ router.patch(
   "/admin/:id",
   protect,
   authorize("admin"),
-  uploadProduct.array("images", 10),
+  uploadProductWithVariants.any(),
   updateProduct
 );
 
