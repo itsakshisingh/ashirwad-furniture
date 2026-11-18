@@ -35,12 +35,15 @@ const formatDate = (date) => {
  * Generate Dynamic Sitemap XML from MongoDB Atlas collections
  * GET /sitemap.xml
  *
- * Includes:
- *  1. Core Pages (Home, Products, Categories, About, etc.)
- *  2. Individual Products: /products/:productId (Direct Product Detail Page)
- *  3. Categories: /products?categoryId=:catId
- *  4. Subcategories: /products?categoryId=:catId&subCategoryId=:subCatId
- *  5. Blogs: /blog/:slug
+ * NOTE FOR WEBSITE ROUTING:
+ * The frontend (Expo React Native Web) displays products via:
+ *   /products?categoryId=:catId&subCategoryId=:subCatId
+ * Navigating directly to /products/:productId in a fresh tab fails with
+ * "This product isn't available" because the frontend Redux store is unpopulated
+ * unless the catalog route /products?categoryId=... is visited.
+ * Therefore, every product in the sitemap points to its active catalog view
+ * (/products?categoryId=...&subCategoryId=...) so clicking it reliably displays
+ * the product without any error!
  */
 const getSitemapXml = async (req, res) => {
   try {
@@ -103,12 +106,20 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // --- Individual Products (Direct Product Page): /products/:productId ---
+    // --- Products: Links to the product category/subcategory view where the product reliably loads ---
     for (const p of products) {
-      const prodId = String(p._id);
+      const catId = p.category?._id ? String(p.category._id) : (p.category ? String(p.category) : "");
+      const subCatId = p.subcategory?._id ? String(p.subcategory._id) : (p.subcategory ? String(p.subcategory) : "");
+      
+      let url = `${baseUrl}/products`;
+      if (catId && subCatId) {
+        url = `${baseUrl}/products?categoryId=${catId}&subCategoryId=${subCatId}`;
+      } else if (catId) {
+        url = `${baseUrl}/products?categoryId=${catId}`;
+      }
+
       const lastmod = formatDate(p.updatedAt || p.createdAt);
-      const url = `${baseUrl}/products/${prodId}`;
-      const catName = p.category?.name || "Product";
+      const catName = p.category?.name || "Catalog Product";
       xml += `  <url>\n`;
       xml += `    <loc>${escapeXml(url)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
