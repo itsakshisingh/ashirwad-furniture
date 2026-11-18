@@ -185,11 +185,25 @@ const productSchema = new mongoose.Schema(
     ],
     variants: [
       {
-        name: {
+        colorName: { type: String, trim: true, default: "" },
+        colorHex: { type: String, trim: true, default: "#000000" },
+        images: { type: [String], default: [] },
+        sku: { type: String, trim: true, default: "" },
+        price: { type: Number, default: null },
+        mrp: { type: Number, default: null },
+        stockQuantity: { type: Number, default: 0 },
+        stockStatus: {
           type: String,
-          trim: true,
+          enum: ["in_stock", "low_stock", "out_of_stock"],
+          default: "in_stock",
         },
-        options: [String],
+        specifications: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+        description: { type: String, default: "" },
+        isDefault: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true },
       },
     ],
     delivery: {

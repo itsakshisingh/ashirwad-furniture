@@ -480,7 +480,7 @@ const createProduct = async (req, res) => {
       },
       specifications,
       colorVariants,
-      variants: legacyVariants,
+      variants: colorVariants,
       delivery,
       tags,
       isFeatured: body.isFeatured === true || body.isFeatured === "true",
@@ -625,19 +625,11 @@ const updateProduct = async (req, res) => {
       product.specifications = { ...product.specifications, ...specifications };
     }
 
-    // Update Color Variants
-    if (body.colorVariants !== undefined) {
-      product.colorVariants = parseColorVariants(body.colorVariants, req);
-    }
-
-    // Update Legacy Variants if provided
-    if (body.variants !== undefined) {
-      try {
-        const v = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants;
-        if (Array.isArray(v) && v.length > 0 && v[0].options) {
-          product.variants = v;
-        }
-      } catch {}
+    // Update Variants (Synchronize both variants and colorVariants)
+    if (body.colorVariants !== undefined || body.variants !== undefined) {
+      const parsedVariants = parseColorVariants(body.colorVariants || body.variants, req);
+      product.colorVariants = parsedVariants;
+      product.variants = parsedVariants;
     }
 
     if (body.delivery) {

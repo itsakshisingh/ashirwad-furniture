@@ -15,7 +15,7 @@ import {
 import toast from "react-hot-toast";
 import { categoriesApi, productsApi, subcategoriesApi } from "../api/services";
 import { errMsg, getList, idOf, imgUrl, pickItem, slugify } from "../utils/helpers";
-import { Badge, Field, ImageUploader, PageLoader, Spinner } from "../components/ui";
+import { Field, ImageUploader, PageLoader, Spinner } from "../components/ui";
 
 const EMPTY = {
   name: "",
@@ -36,7 +36,6 @@ const EMPTY = {
     brand: "",
     material: "",
     upholstery: "",
-    color: "",
     seatingCapacity: "",
     weight: "",
     weightUnit: "kg",
@@ -45,7 +44,6 @@ const EMPTY = {
     dimensions: { length: "", width: "", height: "", unit: "cm" },
   },
   colorVariants: [],
-  variants: [],
   delivery: {
     freeDelivery: false,
     estimatedDays: "",
@@ -107,25 +105,21 @@ function buildFormData(p, files, existing) {
       lowStockThreshold: num(p.inventory.lowStockThreshold) ?? 5,
     },
     specifications: {
-      ...s,
+      brand: s.brand || "",
+      material: s.material || "",
+      upholstery: s.upholstery || "",
+      warranty: s.warranty || "",
+      assemblyRequired: !!s.assemblyRequired,
       seatingCapacity: num(s.seatingCapacity),
       weight: num(s.weight),
+      weightUnit: s.weightUnit || "kg",
       dimensions: {
-        ...s.dimensions,
-        length: num(s.dimensions.length),
-        width: num(s.dimensions.width),
-        height: num(s.dimensions.height),
+        length: num(s.dimensions?.length),
+        width: num(s.dimensions?.width),
+        height: num(s.dimensions?.height),
+        unit: s.dimensions?.unit || "cm",
       },
     },
-    variants: p.variants
-      .filter((v) => v.name && v.name.trim())
-      .map((v) => ({
-        name: v.name.trim(),
-        options: (v.options || "")
-          .split(",")
-          .map((o) => o.trim())
-          .filter(Boolean),
-      })),
     delivery: {
       ...p.delivery,
       returnWindowDays: num(p.delivery.returnWindowDays) ?? 0,
@@ -138,13 +132,13 @@ function buildFormData(p, files, existing) {
   };
   Object.entries(json).forEach(([k, v]) => fd.append(k, JSON.stringify(v)));
 
-  // Send main existing images so deletions are respected
+  // Send main existing images
   fd.append("existingImages", JSON.stringify(existing));
   // Send main newly uploaded files
   files.forEach((f) => fd.append("images", f));
 
-  // Serialize colorVariants data (without the File objects)
-  const colorVariantsData = (p.colorVariants || []).map((v) => ({
+  // Serialize variants data cleanly
+  const variantsData = (p.colorVariants || []).map((v) => ({
     colorName: (v.colorName || "").trim(),
     colorHex: (v.colorHex || "#000000").trim(),
     sku: (v.sku || "").trim(),
@@ -157,7 +151,10 @@ function buildFormData(p, files, existing) {
     isActive: v.isActive !== false,
     images: v.existingImages || [],
   }));
-  fd.append("colorVariants", JSON.stringify(colorVariantsData));
+
+  // Send to both variants and colorVariants for seamless compatibility
+  fd.append("variants", JSON.stringify(variantsData));
+  fd.append("colorVariants", JSON.stringify(variantsData));
 
   // Append variant images for each color
   (p.colorVariants || []).forEach((v, idx) => {
@@ -180,12 +177,21 @@ function fromServer(d) {
       ])
     );
   const m = merge(EMPTY, d);
+
+  // Pick rich variants from variants or colorVariants
+  const sourceVariants =
+    Array.isArray(d.variants) && d.variants.length > 0 && d.variants[0].colorName !== undefined
+      ? d.variants
+      : Array.isArray(d.colorVariants)
+      ? d.colorVariants
+      : [];
+
   return {
     ...m,
     category: idOf(d.category),
     subcategory: idOf(d.subcategory),
     tags: (d.tags || []).join(", "),
-    colorVariants: (d.colorVariants || []).map((v, i) => ({
+    colorVariants: sourceVariants.map((v, i) => ({
       colorName: v.colorName || "",
       colorHex: v.colorHex || "#1a1a1a",
       sku: v.sku || "",
@@ -198,10 +204,6 @@ function fromServer(d) {
       isActive: v.isActive !== false,
       existingImages: Array.isArray(v.images) ? v.images : [],
       newFiles: [],
-    })),
-    variants: (d.variants || []).map((v) => ({
-      name: v.name || "",
-      options: (v.options || []).join(", "),
     })),
   };
 }
@@ -218,7 +220,7 @@ function Section({ title, hint, children }) {
   );
 }
 
-// Color Variant Card Component
+// Single Variant Card Component
 function VariantCard({
   variant,
   index,
@@ -263,20 +265,21 @@ function VariantCard({
     (variant.existingImages?.length || 0) + (variant.newFiles?.length || 0);
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-stone-50/50 shadow-sm transition hover:border-stone-300">
+    <div className="rounded-xl border border-stone-200 bg-stone-50/60 shadow-sm transition hover:border-stone-300">
       {/* Variant Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 rounded-t-xl">
         <div className="flex items-center gap-3">
           <div
-            className="h-7 w-7 rounded-full border border-stone-300 shadow-inner flex items-center justify-center shrink-0"
+            className="h-8 w-8 rounded-full border border-stone-300 shadow-inner flex items-center justify-center shrink-0 cursor-pointer"
             style={{ backgroundColor: variant.colorHex || "#000" }}
+            title={variant.colorHex}
           >
             {variant.isDefault && <Check className="h-4 w-4 text-white drop-shadow" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-ink-900">
-                {variant.colorName || `Color Variant #${index + 1}`}
+                {variant.colorName || `Variant #${index + 1}`}
               </span>
               {variant.isDefault && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
@@ -284,9 +287,10 @@ function VariantCard({
                 </span>
               )}
             </div>
-            <p className="text-xs text-stone-500 font-mono">
+            <p className="text-xs text-stone-500 font-mono mt-0.5">
               {variant.colorHex} {variant.sku ? `• SKU: ${variant.sku}` : ""} •{" "}
-              {totalImages} {totalImages === 1 ? "photo" : "photos"}
+              {totalImages} {totalImages === 1 ? "image" : "images"}{" "}
+              {variant.price ? `• ₹${variant.price}` : ""}
             </p>
           </div>
         </div>
@@ -296,7 +300,7 @@ function VariantCard({
             <button
               type="button"
               onClick={onSetDefault}
-              className="text-xs font-medium text-stone-600 hover:text-emerald-700 hover:underline px-2 py-1"
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline px-2 py-1"
             >
               Make Default
             </button>
@@ -322,7 +326,7 @@ function VariantCard({
         </div>
       </div>
 
-      {/* Variant Body */}
+      {/* Variant Details */}
       {open && (
         <div className="p-4 space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -336,11 +340,11 @@ function VariantCard({
               />
             </Field>
 
-            <Field label="Color Code / Swatch" hint="Hex code for the color dot">
+            <Field label="Color Swatch & Code" hint="Select color circle on product page">
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  className="h-10 w-12 cursor-pointer rounded border border-stone-300 p-0.5 bg-white"
+                  className="h-10 w-12 cursor-pointer rounded border border-stone-300 p-0.5 bg-white shrink-0"
                   value={variant.colorHex || "#1a1a1a"}
                   onChange={(e) => onUpdate({ ...variant, colorHex: e.target.value })}
                 />
@@ -353,7 +357,7 @@ function VariantCard({
               </div>
             </Field>
 
-            <Field label="Variant SKU" hint="Optional variant-specific SKU">
+            <Field label="Variant SKU" hint="SKU specific to this color">
               <input
                 className="input uppercase"
                 placeholder="e.g. CHAIR-BLK-01"
@@ -376,18 +380,18 @@ function VariantCard({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Color Price (₹)" hint="Leave blank to use main product price">
+            <Field label="Variant Price (₹)" hint="Daam for this color variant">
               <input
                 type="number"
                 min="0"
                 className="input"
-                placeholder="Optional override"
+                placeholder="e.g. 3799"
                 value={variant.price}
                 onChange={(e) => onUpdate({ ...variant, price: e.target.value })}
               />
             </Field>
 
-            <Field label="Color MRP / Original (₹)" hint="Strikethrough original price like Amazon">
+            <Field label="Variant MRP / Original (₹)" hint="Amazon-style strikethrough price">
               <input
                 type="number"
                 min="0"
@@ -409,24 +413,24 @@ function VariantCard({
             </Field>
           </div>
 
-          {/* Color Images */}
-          <div className="rounded-lg border border-stone-200 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
+          {/* Multiple Images per Variant */}
+          <div className="rounded-lg border border-stone-200 bg-white p-3.5">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                  Photos for this Color ({totalImages})
+                <p className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                  Multiple Images for this Color ({totalImages})
                 </p>
                 <p className="text-[11px] text-stone-400">
-                  Upload multiple photos of this color variant. First photo will show as the swatch thumbnail.
+                  First picture will be shown as the color swatch thumbnail when user browses colors.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="btn-ghost !py-1 !px-2.5 !text-xs"
+                className="btn-brass !py-1 !px-3 !text-xs"
               >
-                <ImagePlus className="h-3.5 w-3.5" /> Add Images
+                <ImagePlus className="h-3.5 w-3.5" /> + Add Images
               </button>
               <input
                 ref={fileInputRef}
@@ -489,16 +493,16 @@ function VariantCard({
                   className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-stone-200 text-xs text-stone-400 hover:border-emerald-600 hover:text-emerald-700"
                 >
                   <ImagePlus className="mb-1 h-5 w-5" />
-                  <span>Click to add photos for {variant.colorName || "this color"}</span>
+                  <span>Click to upload photos for {variant.colorName || "this color"}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <Field label="Color Specific Description / Features (Optional)">
+          <Field label="Specific Notes / Features for this Color (Optional)">
             <input
               className="input text-xs"
-              placeholder="e.g. Features breathable black mesh with chrome silver heavy-duty base"
+              placeholder="e.g. Ergonomic lumbar mesh in dark black with chrome legs"
               value={variant.description}
               onChange={(e) => onUpdate({ ...variant, description: e.target.value })}
             />
@@ -547,7 +551,6 @@ export default function ProductForm() {
     })();
   }, [id, isEdit]);
 
-  // path = "pricing.price" jaisa; immutable update
   const set = (path, value) =>
     setP((prev) => {
       const next = structuredClone(prev);
@@ -590,7 +593,12 @@ export default function ProductForm() {
       ...prev,
       colorVariants: [
         ...(prev.colorVariants || []),
-        { ...EMPTY_VARIANT, isDefault: isFirst },
+        {
+          ...EMPTY_VARIANT,
+          price: prev.pricing?.price || "",
+          mrp: prev.pricing?.salePrice || "",
+          isDefault: isFirst,
+        },
       ],
     }));
   };
@@ -626,7 +634,7 @@ export default function ProductForm() {
   const submit = async (e) => {
     e.preventDefault();
     if (!isEdit && files.length === 0 && (p.colorVariants || []).length === 0) {
-      return toast.error("Please add at least one product image or color variant.");
+      return toast.error("Please add at least one product image or variant with photos.");
     }
     setSaving(true);
     try {
@@ -657,6 +665,7 @@ export default function ProductForm() {
         </h1>
       </div>
 
+      {/* 1. BASIC DETAILS */}
       <Section title="Basic details">
         <Field label="Product name *" className="sm:col-span-2">
           <input className="input" required {...bind("name")} />
@@ -713,32 +722,16 @@ export default function ProductForm() {
         </Field>
       </Section>
 
-      <Section title="Main Images" hint="Base product pictures. First image is used as the default thumbnail.">
-        <div className="sm:col-span-2 lg:col-span-3">
-          <ImageUploader
-            existing={existing}
-            files={files}
-            onFiles={setFiles}
-            onRemoveExisting={(src) => setExisting(existing.filter((s) => s !== src))}
-          />
-          {isEdit && (
-            <p className="mt-2 text-xs text-stone-500">
-              Upload new images only if you want to add or replace them.
-            </p>
-          )}
-        </div>
-      </Section>
-
-      {/* AMAZON-STYLE COLOR VARIANTS */}
+      {/* 2. AMAZON-STYLE PRODUCT VARIANTS & COLORS */}
       <section className="card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-stone-200 px-5 py-4 gap-2">
           <div>
             <div className="flex items-center gap-2">
               <Palette className="h-5 w-5 text-emerald-700" />
-              <h2 className="text-lg font-bold">Color Variants (Amazon Style)</h2>
+              <h2 className="text-lg font-bold">Product Variants & Colors (Amazon Style)</h2>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Add multiple colors (e.g. Dark Black & Grey, Walnut Brown). Each color can have its own pictures, price, MRP, and stock.
+              Ek product ke alag-alag color variants add karein. Har variant ki apni multiple photos, alag price, MRP, aur stock rahega.
             </p>
           </div>
           <button
@@ -746,7 +739,7 @@ export default function ProductForm() {
             onClick={addColorVariant}
             className="btn-brass !py-1.5 !px-3 !text-xs self-start sm:self-auto"
           >
-            <Plus className="h-4 w-4" /> Add Color Variant
+            <Plus className="h-4 w-4" /> Add Variant
           </button>
         </div>
 
@@ -754,16 +747,16 @@ export default function ProductForm() {
           {(p.colorVariants || []).length === 0 ? (
             <div className="rounded-xl border border-dashed border-stone-300 p-8 text-center bg-stone-50">
               <Palette className="mx-auto h-8 w-8 text-stone-400 mb-2" />
-              <p className="font-semibold text-stone-700">No Color Variants Added</p>
+              <p className="font-semibold text-stone-700">No Variants Added Yet</p>
               <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
-                If this product comes in different colors (like Amazon), click "+ Add Color Variant" to add colors with their own photos and prices.
+                Agar ye product multiple colors me aata hai (Amazon jaise), "+ Add Variant" par click karke colors aur unki photos add karein.
               </p>
               <button
                 type="button"
                 onClick={addColorVariant}
                 className="btn-ghost !text-xs mt-3"
               >
-                <Plus className="h-3.5 w-3.5" /> Add First Color Variant
+                <Plus className="h-3.5 w-3.5" /> Add First Variant
               </button>
             </div>
           ) : (
@@ -784,7 +777,8 @@ export default function ProductForm() {
         </div>
       </section>
 
-      <Section title="Pricing">
+      {/* 3. BASE PRICING */}
+      <Section title="Base Pricing" hint="Default price of the product (agar kisi variant ka custom price na ho)">
         <Field label="Price (₹) *">
           <input
             type="number"
@@ -813,7 +807,8 @@ export default function ProductForm() {
         </Field>
       </Section>
 
-      <Section title="Stock">
+      {/* 4. BASE STOCK */}
+      <Section title="Base Stock">
         <Field label="Quantity in stock">
           <input
             type="number"
@@ -841,6 +836,19 @@ export default function ProductForm() {
         <div>{check("inventory.allowBackorder", "Allow orders when out of stock")}</div>
       </Section>
 
+      {/* 5. MAIN PRODUCT IMAGES (Optional if variants have photos) */}
+      <Section title="General Product Images (Optional)" hint="Common product pictures. Variant photos added above will be used for specific colors.">
+        <div className="sm:col-span-2 lg:col-span-3">
+          <ImageUploader
+            existing={existing}
+            files={files}
+            onFiles={setFiles}
+            onRemoveExisting={(src) => setExisting(existing.filter((s) => s !== src))}
+          />
+        </div>
+      </Section>
+
+      {/* 6. SPECIFICATIONS (Duplicate 'Color' text field removed!) */}
       <Section title="Specifications">
         <Field label="Brand">
           <input className="input" {...bind("specifications.brand")} />
@@ -850,9 +858,6 @@ export default function ProductForm() {
         </Field>
         <Field label="Upholstery">
           <input className="input" {...bind("specifications.upholstery")} />
-        </Field>
-        <Field label="Color">
-          <input className="input" {...bind("specifications.color")} />
         </Field>
         <Field label="Seating capacity">
           <input
@@ -911,6 +916,7 @@ export default function ProductForm() {
         <div>{check("specifications.assemblyRequired", "Assembly required")}</div>
       </Section>
 
+      {/* 7. DELIVERY & RETURNS */}
       <Section title="Delivery and returns">
         <Field label="Estimated delivery">
           <input
@@ -933,7 +939,7 @@ export default function ProductForm() {
         </div>
       </Section>
 
-      {/* Visibility & SEO */}
+      {/* 8. VISIBILITY & SETTINGS */}
       <Section title="Visibility & Settings">
         <Field label="Tags" hint="Comma-separated tags" className="sm:col-span-2">
           <input
@@ -949,6 +955,7 @@ export default function ProductForm() {
         </div>
       </Section>
 
+      {/* Floating Save Bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur lg:left-64">
         <div className="mx-auto flex max-w-7xl justify-end gap-2">
           <Link to="/products" className="btn-ghost">
