@@ -35,10 +35,12 @@ const formatDate = (date) => {
  * Generate Dynamic Sitemap XML from MongoDB Atlas collections
  * GET /sitemap.xml
  *
- * URL format EXACTLY matches live Expo web client routing:
- *  - Category product listing : /products?categoryId=:catId
- *  - Subcategory listing      : /products?categoryId=:catId&subCategoryId=:subCatId
- *  - Published blogs          : /blog/:slug
+ * Includes:
+ *  1. Core Pages (Home, Products, Categories, About, etc.)
+ *  2. Individual Products: /products/:productId (Direct Product Detail Page)
+ *  3. Categories: /products?categoryId=:catId
+ *  4. Subcategories: /products?categoryId=:catId&subCategoryId=:subCatId
+ *  5. Blogs: /blog/:slug
  */
 const getSitemapXml = async (req, res) => {
   try {
@@ -46,28 +48,34 @@ const getSitemapXml = async (req, res) => {
 
     // 1. Static Core Pages (matches Expo Router screen paths)
     const staticPages = [
-      { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily" },
-      { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly" },
-      { url: `${baseUrl}/products`, priority: "0.9", changefreq: "daily" },
-      { url: `${baseUrl}/catalog/categories`, priority: "0.8", changefreq: "weekly" },
-      { url: `${baseUrl}/projects`, priority: "0.7", changefreq: "weekly" },
-      { url: `${baseUrl}/our-happy-customers`, priority: "0.7", changefreq: "weekly" },
-      { url: `${baseUrl}/company-certifications`, priority: "0.7", changefreq: "monthly" },
-      { url: `${baseUrl}/quote`, priority: "0.8", changefreq: "weekly" },
-      { url: `${baseUrl}/search`, priority: "0.6", changefreq: "weekly" },
+      { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily", type: "Core Page", title: "Home" },
+      { url: `${baseUrl}/products`, priority: "0.9", changefreq: "daily", type: "Core Page", title: "All Products & Catalog" },
+      { url: `${baseUrl}/catalog/categories`, priority: "0.8", changefreq: "weekly", type: "Core Page", title: "Catalog Categories" },
+      { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly", type: "Core Page", title: "About Ashirwad Furnex" },
+      { url: `${baseUrl}/projects`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Projects" },
+      { url: `${baseUrl}/our-happy-customers`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Our Clients" },
+      { url: `${baseUrl}/company-certifications`, priority: "0.7", changefreq: "monthly", type: "Core Page", title: "Certifications" },
+      { url: `${baseUrl}/quote`, priority: "0.8", changefreq: "weekly", type: "Core Page", title: "Request a Quote" },
+      { url: `${baseUrl}/search`, priority: "0.6", changefreq: "weekly", type: "Core Page", title: "Search Products" },
     ];
 
     // 2. Fetch data from MongoDB in parallel
-    const [blogs, categories, subcategories] = await Promise.all([
-      Blog.find({ status: "published" }, "slug updatedAt createdAt")
+    const [blogs, products, categories, subcategories] = await Promise.all([
+      Blog.find({ status: "published" }, "title slug updatedAt createdAt")
         .sort({ updatedAt: -1 })
         .lean(),
 
-      Category.find({}, "slug updatedAt createdAt _id")
+      Product.find({}, "name slug updatedAt createdAt _id category subcategory")
+        .populate("category", "name")
+        .populate("subcategory", "name")
+        .sort({ updatedAt: -1 })
+        .lean(),
+
+      Category.find({}, "name slug updatedAt createdAt _id")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
 
-      Subcategory.find({}, "slug updatedAt createdAt _id category")
+      Subcategory.find({}, "name slug updatedAt createdAt _id category")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
     ]);
@@ -77,22 +85,42 @@ const getSitemapXml = async (req, res) => {
     xml += `<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
     xml += `        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
+    xml += `        xmlns:furnex="https://ashirwadfurnex.com/schema/sitemap-ext"\n`;
     xml += `        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9\n`;
     xml += `        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n`;
 
     const now = formatDate(new Date());
 
-    // --- Static Pages ---
+    // --- Static Core Pages ---
     for (const page of staticPages) {
       xml += `  <url>\n`;
       xml += `    <loc>${escapeXml(page.url)}</loc>\n`;
       xml += `    <lastmod>${now}</lastmod>\n`;
       xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
       xml += `    <priority>${page.priority}</priority>\n`;
+      xml += `    <furnex:type>${escapeXml(page.type)}</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(page.title)}</furnex:name>\n`;
       xml += `  </url>\n`;
     }
 
-    // --- Categories: /products?categoryId=:catId (matches real website navigation) ---
+    // --- Individual Products (Direct Product Page): /products/:productId ---
+    for (const p of products) {
+      const prodId = String(p._id);
+      const lastmod = formatDate(p.updatedAt || p.createdAt);
+      const url = `${baseUrl}/products/${prodId}`;
+      const catName = p.category?.name || "Product";
+      xml += `  <url>\n`;
+      xml += `    <loc>${escapeXml(url)}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      xml += `    <changefreq>weekly</changefreq>\n`;
+      xml += `    <priority>0.9</priority>\n`;
+      xml += `    <furnex:type>Product</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(p.name)}</furnex:name>\n`;
+      xml += `    <furnex:category>${escapeXml(catName)}</furnex:category>\n`;
+      xml += `  </url>\n`;
+    }
+
+    // --- Categories: /products?categoryId=:catId ---
     for (const c of categories) {
       const catId = String(c._id);
       const lastmod = formatDate(c.updatedAt || c.createdAt);
@@ -101,7 +129,9 @@ const getSitemapXml = async (req, res) => {
       xml += `    <loc>${escapeXml(url)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
+      xml += `    <priority>0.8</priority>\n`;
+      xml += `    <furnex:type>Category</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(c.name)}</furnex:name>\n`;
       xml += `  </url>\n`;
     }
 
@@ -117,6 +147,8 @@ const getSitemapXml = async (req, res) => {
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.7</priority>\n`;
+      xml += `    <furnex:type>Subcategory</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(sc.name)}</furnex:name>\n`;
       xml += `  </url>\n`;
     }
 
@@ -129,6 +161,8 @@ const getSitemapXml = async (req, res) => {
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
+      xml += `    <furnex:type>Blog</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(b.title)}</furnex:name>\n`;
       xml += `  </url>\n`;
     }
 
