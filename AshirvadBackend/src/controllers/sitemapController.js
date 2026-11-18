@@ -35,15 +35,13 @@ const formatDate = (date) => {
  * Generate Dynamic Sitemap XML from MongoDB Atlas collections
  * GET /sitemap.xml
  *
- * NOTE FOR WEBSITE ROUTING:
- * The frontend (Expo React Native Web) displays products via:
- *   /products?categoryId=:catId&subCategoryId=:subCatId
- * Navigating directly to /products/:productId in a fresh tab fails with
- * "This product isn't available" because the frontend Redux store is unpopulated
- * unless the catalog route /products?categoryId=... is visited.
- * Therefore, every product in the sitemap points to its active catalog view
- * (/products?categoryId=...&subCategoryId=...) so clicking it reliably displays
- * the product without any error!
+ * URL Structure:
+ *  - Product Detail Page: https://ashirwadfurnex.com/products/:productId
+ *    (Directly opens the Product Details view with image, specs, and Get Best Quote button)
+ *  - Categories Listing:  https://ashirwadfurnex.com/products?categoryId=:catId
+ *  - Subcategories:       https://ashirwadfurnex.com/products?categoryId=:catId&subCategoryId=:subCatId
+ *  - Blogs:               https://ashirwadfurnex.com/blog/:slug
+ *  - Core Static Pages:   /, /products, /catalog/categories, /about-ashirwad, etc.
  */
 const getSitemapXml = async (req, res) => {
   try {
@@ -68,7 +66,7 @@ const getSitemapXml = async (req, res) => {
         .sort({ updatedAt: -1 })
         .lean(),
 
-      Product.find({}, "name slug updatedAt createdAt _id category subcategory")
+      Product.find({}, "name sku slug updatedAt createdAt _id category subcategory")
         .populate("category", "name")
         .populate("subcategory", "name")
         .sort({ updatedAt: -1 })
@@ -106,27 +104,21 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // --- Products: Links to the product category/subcategory view where the product reliably loads ---
+    // --- Individual Products (Direct Product Details Page): /products/:productId ---
     for (const p of products) {
-      const catId = p.category?._id ? String(p.category._id) : (p.category ? String(p.category) : "");
-      const subCatId = p.subcategory?._id ? String(p.subcategory._id) : (p.subcategory ? String(p.subcategory) : "");
-      
-      let url = `${baseUrl}/products`;
-      if (catId && subCatId) {
-        url = `${baseUrl}/products?categoryId=${catId}&subCategoryId=${subCatId}`;
-      } else if (catId) {
-        url = `${baseUrl}/products?categoryId=${catId}`;
-      }
-
+      const prodId = String(p._id);
       const lastmod = formatDate(p.updatedAt || p.createdAt);
-      const catName = p.category?.name || "Catalog Product";
+      const url = `${baseUrl}/products/${prodId}`;
+      const catName = p.category?.name || "Product";
+      const displayName = p.sku ? `${p.name} (${p.sku})` : p.name;
+
       xml += `  <url>\n`;
       xml += `    <loc>${escapeXml(url)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.9</priority>\n`;
-      xml += `    <furnex:type>Product</furnex:type>\n`;
-      xml += `    <furnex:name>${escapeXml(p.name)}</furnex:name>\n`;
+      xml += `    <furnex:type>Product Details</furnex:type>\n`;
+      xml += `    <furnex:name>${escapeXml(displayName)}</furnex:name>\n`;
       xml += `    <furnex:category>${escapeXml(catName)}</furnex:category>\n`;
       xml += `  </url>\n`;
     }
