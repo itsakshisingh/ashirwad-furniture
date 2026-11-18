@@ -1,5 +1,59 @@
 const mongoose = require("mongoose");
 
+const variantSchema = new mongoose.Schema(
+  {
+    colorName: { type: String, trim: true, default: "" },
+    colorHex: { type: String, trim: true, default: "#000000" },
+    images: { type: [String], default: [] },
+    sku: { type: String, trim: true, default: "" },
+    pricing: {
+      price: { type: Number, default: 0 },
+      salePrice: { type: Number, default: null },
+      mrp: { type: Number, default: null },
+      currency: { type: String, default: "INR" },
+      taxPercentage: { type: Number, default: 0 },
+    },
+    price: { type: Number, default: 0 },
+    mrp: { type: Number, default: null },
+    inventory: {
+      stockQuantity: { type: Number, default: 0 },
+      lowStockThreshold: { type: Number, default: 5 },
+      stockStatus: {
+        type: String,
+        enum: ["in_stock", "out_of_stock", "low_stock", "discontinued"],
+        default: "in_stock",
+      },
+      allowBackorder: { type: Boolean, default: false },
+    },
+    stockQuantity: { type: Number, default: 0 },
+    stockStatus: {
+      type: String,
+      enum: ["in_stock", "out_of_stock", "low_stock", "discontinued"],
+      default: "in_stock",
+    },
+    specifications: {
+      brand: { type: String, default: "", trim: true },
+      material: { type: String, default: "", trim: true },
+      upholstery: { type: String, default: "", trim: true },
+      seatingCapacity: { type: Number, default: null },
+      dimensions: {
+        length: { type: Number, default: null },
+        width: { type: Number, default: null },
+        height: { type: Number, default: null },
+        unit: { type: String, default: "cm" },
+      },
+      weight: { type: Number, default: null },
+      weightUnit: { type: String, default: "kg" },
+      assemblyRequired: { type: Boolean, default: false },
+      warranty: { type: String, default: "", trim: true },
+    },
+    description: { type: String, default: "" },
+    isDefault: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: true, timestamps: true }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -57,7 +111,7 @@ const productSchema = new mongoose.Schema(
     pricing: {
       price: {
         type: Number,
-        required: true,
+        default: 0,
         min: 0,
       },
       salePrice: {
@@ -160,52 +214,8 @@ const productSchema = new mongoose.Schema(
         trim: true,
       },
     },
-        colorVariants: [
-      {
-        colorName: { type: String, trim: true, default: '' },
-        colorHex: { type: String, trim: true, default: '#000000' },
-        images: { type: [String], default: [] },
-        sku: { type: String, trim: true, default: '' },
-        price: { type: Number, default: null },
-        mrp: { type: Number, default: null },
-        stockQuantity: { type: Number, default: 0 },
-        stockStatus: {
-          type: String,
-          enum: ['in_stock', 'low_stock', 'out_of_stock'],
-          default: 'in_stock',
-        },
-        specifications: {
-          type: mongoose.Schema.Types.Mixed,
-          default: {},
-        },
-        description: { type: String, default: '' },
-        isDefault: { type: Boolean, default: false },
-        isActive: { type: Boolean, default: true },
-      },
-    ],
-    variants: [
-      {
-        colorName: { type: String, trim: true, default: "" },
-        colorHex: { type: String, trim: true, default: "#000000" },
-        images: { type: [String], default: [] },
-        sku: { type: String, trim: true, default: "" },
-        price: { type: Number, default: null },
-        mrp: { type: Number, default: null },
-        stockQuantity: { type: Number, default: 0 },
-        stockStatus: {
-          type: String,
-          enum: ["in_stock", "low_stock", "out_of_stock"],
-          default: "in_stock",
-        },
-        specifications: {
-          type: mongoose.Schema.Types.Mixed,
-          default: {},
-        },
-        description: { type: String, default: "" },
-        isDefault: { type: Boolean, default: false },
-        isActive: { type: Boolean, default: true },
-      },
-    ],
+    variants: [variantSchema],
+    colorVariants: [variantSchema],
     delivery: {
       freeDelivery: {
         type: Boolean,
@@ -269,8 +279,6 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for performance
-// Note: slug and sku already indexed via unique:true in field definition
 productSchema.index({ category: 1, subcategory: 1, displayOrder: 1 });
 productSchema.index({ "pricing.price": 1 });
 productSchema.index({ tags: 1 });

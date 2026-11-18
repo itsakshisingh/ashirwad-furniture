@@ -45,8 +45,8 @@ const deleteLocalImages = async (images = []) => {
   );
 };
 
-// Parse and process color variants with newly uploaded variant files
-const parseColorVariants = (rawVariants, req) => {
+// Parse and process variants containing complete pricing, stock, images, and specifications
+const parseVariants = (rawVariants, req) => {
   let parsed = [];
   if (rawVariants) {
     try {
@@ -63,29 +63,107 @@ const parseColorVariants = (rawVariants, req) => {
     const newUploaded = getVariantUploadedImages(req, idx);
     const combinedImages = [...existingImages, ...newUploaded];
 
+    const vPrice =
+      variant.price !== undefined && variant.price !== "" && variant.price !== null
+        ? Number(variant.price)
+        : variant.pricing?.price
+        ? Number(variant.pricing.price)
+        : 0;
+    const vSalePrice =
+      variant.salePrice !== undefined && variant.salePrice !== "" && variant.salePrice !== null
+        ? Number(variant.salePrice)
+        : variant.pricing?.salePrice
+        ? Number(variant.pricing.salePrice)
+        : null;
+    const vMrp =
+      variant.mrp !== undefined && variant.mrp !== "" && variant.mrp !== null
+        ? Number(variant.mrp)
+        : variant.pricing?.mrp
+        ? Number(variant.pricing.mrp)
+        : vSalePrice;
+    const vTax =
+      variant.taxPercentage !== undefined &&
+      variant.taxPercentage !== "" &&
+      variant.taxPercentage !== null
+        ? Number(variant.taxPercentage)
+        : variant.pricing?.taxPercentage
+        ? Number(variant.pricing.taxPercentage)
+        : 0;
+
+    const vStockQty =
+      variant.stockQuantity !== undefined &&
+      variant.stockQuantity !== "" &&
+      variant.stockQuantity !== null
+        ? Number(variant.stockQuantity)
+        : variant.inventory?.stockQuantity
+        ? Number(variant.inventory.stockQuantity)
+        : 0;
+    const vLowStock =
+      variant.lowStockThreshold !== undefined &&
+      variant.lowStockThreshold !== "" &&
+      variant.lowStockThreshold !== null
+        ? Number(variant.lowStockThreshold)
+        : variant.inventory?.lowStockThreshold
+        ? Number(variant.inventory.lowStockThreshold)
+        : 5;
+    const vStockStatus =
+      variant.stockStatus || variant.inventory?.stockStatus || "in_stock";
+    const vAllowBackorder =
+      variant.allowBackorder === true ||
+      variant.allowBackorder === "true" ||
+      variant.inventory?.allowBackorder === true;
+
+    const s = variant.specifications || {};
+    const dims = s.dimensions || {};
+
     return {
       colorName: variant.colorName ? String(variant.colorName).trim() : "",
       colorHex: variant.colorHex ? String(variant.colorHex).trim() : "#000000",
       images: combinedImages,
       sku: variant.sku ? String(variant.sku).trim() : "",
-      price:
-        variant.price !== undefined && variant.price !== "" && variant.price !== null
-          ? Number(variant.price)
-          : null,
-      mrp:
-        variant.mrp !== undefined && variant.mrp !== "" && variant.mrp !== null
-          ? Number(variant.mrp)
-          : null,
-      stockQuantity:
-        variant.stockQuantity !== undefined &&
-        variant.stockQuantity !== "" &&
-        variant.stockQuantity !== null
-          ? Number(variant.stockQuantity)
-          : 0,
-      stockStatus: ["in_stock", "low_stock", "out_of_stock"].includes(variant.stockStatus)
-        ? variant.stockStatus
+      price: vPrice,
+      mrp: vMrp,
+      pricing: {
+        price: vPrice,
+        salePrice: vSalePrice,
+        mrp: vMrp,
+        currency: "INR",
+        taxPercentage: vTax,
+      },
+      stockQuantity: vStockQty,
+      stockStatus: ["in_stock", "low_stock", "out_of_stock", "discontinued"].includes(
+        vStockStatus
+      )
+        ? vStockStatus
         : "in_stock",
-      specifications: variant.specifications || {},
+      inventory: {
+        stockQuantity: vStockQty,
+        lowStockThreshold: vLowStock,
+        stockStatus: vStockStatus,
+        allowBackorder: vAllowBackorder,
+      },
+      specifications: {
+        brand: s.brand ? String(s.brand).trim() : "",
+        material: s.material ? String(s.material).trim() : "",
+        upholstery: s.upholstery ? String(s.upholstery).trim() : "",
+        seatingCapacity:
+          s.seatingCapacity != null && s.seatingCapacity !== ""
+            ? Number(s.seatingCapacity)
+            : null,
+        dimensions: {
+          length:
+            dims.length != null && dims.length !== "" ? Number(dims.length) : null,
+          width: dims.width != null && dims.width !== "" ? Number(dims.width) : null,
+          height:
+            dims.height != null && dims.height !== "" ? Number(dims.height) : null,
+          unit: dims.unit || "cm",
+        },
+        weight: s.weight != null && s.weight !== "" ? Number(s.weight) : null,
+        weightUnit: s.weightUnit || "kg",
+        assemblyRequired:
+          s.assemblyRequired === true || s.assemblyRequired === "true",
+        warranty: s.warranty ? String(s.warranty).trim() : "",
+      },
       description: variant.description ? String(variant.description) : "",
       isDefault: variant.isDefault === true || variant.isDefault === "true",
       isActive: variant.isActive !== false && variant.isActive !== "false",
@@ -142,13 +220,58 @@ const validateProduct = (data, partial = false) => {
   }
 
   if (!partial) {
-    // price can arrive as a flat field OR nested inside a 'pricing' JSON string/object
-    const pricingObj = data.pricing
-      ? (typeof data.pricing === "string" ? (() => { try { return JSON.parse(data.pricing); } catch { return {}; } })() : data.pricing)
-      : {};
-    const resolvedPrice = data.price !== undefined ? data.price : pricingObj?.price;
-    if (resolvedPrice === undefined || resolvedPrice === "" || resolvedPrice === null || isNaN(Number(resolvedPrice)) || Number(resolvedPrice) < 0) {
-      errors.push("price is required and must be a non-negative number.");
+    // Check if variant has price
+    const variantsList = (() => {
+      if (Array.isArray(data.variants)) return data.variants;
+      if (Array.isArray(data.colorVariants)) return data.colorVariants;
+      if (typeof data.variants === "string") {
+        try {
+          return JSON.parse(data.variants);
+        } catch {
+          return [];
+        }
+      }
+      if (typeof data.colorVariants === "string") {
+        try {
+          return JSON.parse(data.colorVariants);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    })();
+
+    const hasVariantPrice = variantsList.some(
+      (v) =>
+        v.price !== undefined &&
+        v.price !== "" &&
+        v.price !== null &&
+        !isNaN(Number(v.price))
+    );
+
+    if (!hasVariantPrice) {
+      const pricingObj = data.pricing
+        ? typeof data.pricing === "string"
+          ? (() => {
+              try {
+                return JSON.parse(data.pricing);
+              } catch {
+                return {};
+              }
+            })()
+          : data.pricing
+        : {};
+      const resolvedPrice =
+        data.price !== undefined ? data.price : pricingObj?.price;
+      if (
+        resolvedPrice === undefined ||
+        resolvedPrice === "" ||
+        resolvedPrice === null ||
+        isNaN(Number(resolvedPrice)) ||
+        Number(resolvedPrice) < 0
+      ) {
+        errors.push("Price is required in product or in at least one variant.");
+      }
     }
   }
 
@@ -352,7 +475,7 @@ const getProductById = async (req, res) => {
   }
 };
 
-// ADMIN: Create product with multiple images and color variants
+// ADMIN: Create product with variants holding all details
 const createProduct = async (req, res) => {
   const uploadedImages = getMainUploadedImages(req);
   const allNewFiles = getAllUploadedImages(req);
@@ -422,34 +545,90 @@ const createProduct = async (req, res) => {
     }
 
     // Parse JSON fields if they're strings
-    const pricing = typeof body.pricing === "string" ? JSON.parse(body.pricing) : body.pricing || {};
-    const inventory = typeof body.inventory === "string" ? JSON.parse(body.inventory) : body.inventory || {};
-    const specifications = typeof body.specifications === "string" ? JSON.parse(body.specifications) : body.specifications || {};
-    const delivery = typeof body.delivery === "string" ? JSON.parse(body.delivery) : body.delivery || {};
-    const tags = typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags || [];
-    const seo = typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo || {};
+    let pricing =
+      typeof body.pricing === "string"
+        ? JSON.parse(body.pricing)
+        : body.pricing || {};
+    let inventory =
+      typeof body.inventory === "string"
+        ? JSON.parse(body.inventory)
+        : body.inventory || {};
+    let specifications =
+      typeof body.specifications === "string"
+        ? JSON.parse(body.specifications)
+        : body.specifications || {};
+    const delivery =
+      typeof body.delivery === "string"
+        ? JSON.parse(body.delivery)
+        : body.delivery || {};
+    const tags =
+      typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags || [];
+    const seo =
+      typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo || {};
 
-    // Process Color Variants
-    const colorVariants = parseColorVariants(body.colorVariants || body.variants, req);
+    // Process Variants containing all details
+    const variants = parseVariants(body.variants || body.colorVariants, req);
 
-    // Legacy variants (if sent as { name, options })
-    let legacyVariants = [];
-    if (body.variants) {
-      try {
-        const v = typeof body.variants === "string" ? JSON.parse(body.variants) : body.variants;
-        if (Array.isArray(v) && v.length > 0 && v[0].options) {
-          legacyVariants = v;
-        }
-      } catch {}
+    // Auto-populate product top-level fields from default variant if available
+    const defaultVariant =
+      variants.find((v) => v.isDefault) || variants[0] || null;
+
+    if (defaultVariant) {
+      pricing = {
+        price: defaultVariant.price ?? Number(body.price || pricing.price || 0),
+        salePrice:
+          defaultVariant.pricing?.salePrice ??
+          (pricing.salePrice ? Number(pricing.salePrice) : null),
+        currency: "INR",
+        taxPercentage:
+          defaultVariant.pricing?.taxPercentage ??
+          Number(pricing.taxPercentage || 0),
+      };
+      inventory = {
+        stockQuantity:
+          defaultVariant.stockQuantity ?? Number(inventory.stockQuantity || 0),
+        lowStockThreshold:
+          defaultVariant.inventory?.lowStockThreshold ??
+          Number(inventory.lowStockThreshold || 5),
+        stockStatus:
+          defaultVariant.stockStatus || inventory.stockStatus || "in_stock",
+        allowBackorder:
+          defaultVariant.inventory?.allowBackorder ??
+          (inventory.allowBackorder === true ||
+            inventory.allowBackorder === "true"),
+      };
+      specifications = {
+        ...specifications,
+        ...defaultVariant.specifications,
+      };
+    } else {
+      pricing = {
+        price: Number(body.price || pricing.price || 0),
+        salePrice: pricing.salePrice ? Number(pricing.salePrice) : null,
+        currency: pricing.currency || "INR",
+        taxPercentage: Number(pricing.taxPercentage || 0),
+      };
+      inventory = {
+        stockQuantity: Number(inventory.stockQuantity || 0),
+        lowStockThreshold: Number(inventory.lowStockThreshold || 5),
+        stockStatus: inventory.stockStatus || "in_stock",
+        allowBackorder:
+          inventory.allowBackorder === true ||
+          inventory.allowBackorder === "true",
+      };
     }
 
-    // Default thumbnail logic
+    // Thumbnail logic
     let thumbnail = body.thumbnail || "";
+    let finalMainImages = uploadedImages;
+    if (finalMainImages.length === 0 && defaultVariant?.images?.length) {
+      finalMainImages = defaultVariant.images;
+    }
     if (!thumbnail) {
-      if (uploadedImages.length > 0) {
-        thumbnail = uploadedImages[0];
-      } else if (colorVariants.length > 0 && colorVariants[0].images.length > 0) {
-        thumbnail = colorVariants[0].images[0];
+      if (finalMainImages.length > 0) {
+        thumbnail = finalMainImages[0];
+      } else if (defaultVariant?.images?.length) {
+        thumbnail = defaultVariant.images[0];
       }
     }
 
@@ -461,26 +640,18 @@ const createProduct = async (req, res) => {
       description: body.description || "",
       category: body.category,
       subcategory:
-        body.subcategory && body.subcategory !== "null" && body.subcategory !== ""
+        body.subcategory &&
+        body.subcategory !== "null" &&
+        body.subcategory !== ""
           ? body.subcategory
           : null,
-      images: uploadedImages,
+      images: finalMainImages,
       thumbnail,
-      pricing: {
-        price: Number(body.price || pricing.price),
-        salePrice: pricing.salePrice ? Number(pricing.salePrice) : null,
-        currency: pricing.currency || "INR",
-        taxPercentage: Number(pricing.taxPercentage || 0),
-      },
-      inventory: {
-        stockQuantity: Number(inventory.stockQuantity || 0),
-        lowStockThreshold: Number(inventory.lowStockThreshold || 5),
-        stockStatus: inventory.stockStatus || "in_stock",
-        allowBackorder: inventory.allowBackorder === true || inventory.allowBackorder === "true",
-      },
+      pricing,
+      inventory,
       specifications,
-      colorVariants,
-      variants: colorVariants,
+      variants,
+      colorVariants: variants,
       delivery,
       tags,
       isFeatured: body.isFeatured === true || body.isFeatured === "true",
@@ -598,60 +769,114 @@ const updateProduct = async (req, res) => {
     if (body.name) product.name = body.name.trim();
     if (body.slug) product.slug = body.slug.trim().toLowerCase();
     if (body.sku) product.sku = body.sku.trim().toUpperCase();
-    if (body.shortDescription !== undefined) product.shortDescription = body.shortDescription;
+    if (body.shortDescription !== undefined)
+      product.shortDescription = body.shortDescription;
     if (body.description !== undefined) product.description = body.description;
     if (body.category) product.category = body.category;
     if (body.subcategory !== undefined) {
       product.subcategory =
-        body.subcategory && body.subcategory !== "null" && body.subcategory !== ""
+        body.subcategory &&
+        body.subcategory !== "null" &&
+        body.subcategory !== ""
           ? body.subcategory
           : null;
     }
 
     // Update nested objects
     if (body.pricing) {
-      const pricing = typeof body.pricing === "string" ? JSON.parse(body.pricing) : body.pricing;
+      const pricing =
+        typeof body.pricing === "string"
+          ? JSON.parse(body.pricing)
+          : body.pricing;
       product.pricing = { ...product.pricing, ...pricing };
     }
     if (body.price) product.pricing.price = Number(body.price);
 
     if (body.inventory) {
-      const inventory = typeof body.inventory === "string" ? JSON.parse(body.inventory) : body.inventory;
+      const inventory =
+        typeof body.inventory === "string"
+          ? JSON.parse(body.inventory)
+          : body.inventory;
       product.inventory = { ...product.inventory, ...inventory };
     }
 
     if (body.specifications) {
-      const specifications = typeof body.specifications === "string" ? JSON.parse(body.specifications) : body.specifications;
+      const specifications =
+        typeof body.specifications === "string"
+          ? JSON.parse(body.specifications)
+          : body.specifications;
       product.specifications = { ...product.specifications, ...specifications };
     }
 
-    // Update Variants (Synchronize both variants and colorVariants)
-    if (body.colorVariants !== undefined || body.variants !== undefined) {
-      const parsedVariants = parseColorVariants(body.colorVariants || body.variants, req);
-      product.colorVariants = parsedVariants;
-      product.variants = parsedVariants;
+    // Process & Sync Variants
+    if (body.variants !== undefined || body.colorVariants !== undefined) {
+      const processedVariants = parseVariants(
+        body.variants || body.colorVariants,
+        req
+      );
+      product.variants = processedVariants;
+      product.colorVariants = processedVariants;
+
+      // Auto sync default variant to top-level fields
+      const defaultVariant =
+        processedVariants.find((v) => v.isDefault) ||
+        processedVariants[0] ||
+        null;
+      if (defaultVariant) {
+        product.pricing = {
+          ...product.pricing,
+          price: defaultVariant.price ?? product.pricing.price,
+          salePrice:
+            defaultVariant.pricing?.salePrice ?? product.pricing.salePrice,
+          taxPercentage:
+            defaultVariant.pricing?.taxPercentage ??
+            product.pricing.taxPercentage,
+        };
+        product.inventory = {
+          ...product.inventory,
+          stockQuantity:
+            defaultVariant.stockQuantity ?? product.inventory.stockQuantity,
+          stockStatus:
+            defaultVariant.stockStatus || product.inventory.stockStatus,
+        };
+        product.specifications = {
+          ...product.specifications,
+          ...defaultVariant.specifications,
+        };
+        if (defaultVariant.images?.length && (!product.images || !product.images.length)) {
+          product.images = defaultVariant.images;
+          product.thumbnail = defaultVariant.images[0];
+        }
+      }
     }
 
     if (body.delivery) {
-      const delivery = typeof body.delivery === "string" ? JSON.parse(body.delivery) : body.delivery;
+      const delivery =
+        typeof body.delivery === "string"
+          ? JSON.parse(body.delivery)
+          : body.delivery;
       product.delivery = { ...product.delivery, ...delivery };
     }
 
     if (body.tags) {
-      product.tags = typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags;
+      product.tags =
+        typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags;
     }
 
     if (body.seo) {
-      const seo = typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo;
+      const seo =
+        typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo;
       product.seo = { ...product.seo, ...seo };
     }
 
     if (body.isFeatured !== undefined) {
-      product.isFeatured = body.isFeatured === true || body.isFeatured === "true";
+      product.isFeatured =
+        body.isFeatured === true || body.isFeatured === "true";
     }
 
     if (body.isBestSeller !== undefined) {
-      product.isBestSeller = body.isBestSeller === true || body.isBestSeller === "true";
+      product.isBestSeller =
+        body.isBestSeller === true || body.isBestSeller === "true";
     }
 
     if (body.isActive !== undefined) {
@@ -662,11 +887,14 @@ const updateProduct = async (req, res) => {
       product.displayOrder = Number(body.displayOrder);
     }
 
-    // Main product images update logic
+    // Main images update logic if explicitly passed
     let existingMainImages = [];
     if (body.existingImages !== undefined) {
       try {
-        existingMainImages = typeof body.existingImages === "string" ? JSON.parse(body.existingImages) : body.existingImages;
+        existingMainImages =
+          typeof body.existingImages === "string"
+            ? JSON.parse(body.existingImages)
+            : body.existingImages;
       } catch {
         existingMainImages = [];
       }
@@ -686,9 +914,6 @@ const updateProduct = async (req, res) => {
       } else if (!product.thumbnail || !finalMainImages.includes(product.thumbnail)) {
         product.thumbnail = finalMainImages[0];
       }
-    } else if (body.existingImages !== undefined && uploadedImages.length === 0) {
-      product.images = [];
-      product.thumbnail = "";
     }
 
     await product.save();
@@ -782,13 +1007,14 @@ const deleteProduct = async (req, res) => {
 
     // Collect all images including variant images for deletion
     const allImagesToDelete = [...(product.images || [])];
-    if (Array.isArray(product.colorVariants)) {
-      product.colorVariants.forEach((v) => {
-        if (Array.isArray(v.images)) {
-          allImagesToDelete.push(...v.images);
-        }
-      });
-    }
+    const variantsList = product.variants?.length
+      ? product.variants
+      : product.colorVariants || [];
+    variantsList.forEach((v) => {
+      if (Array.isArray(v.images)) {
+        allImagesToDelete.push(...v.images);
+      }
+    });
 
     await deleteLocalImages(allImagesToDelete);
 
