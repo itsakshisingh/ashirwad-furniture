@@ -9,18 +9,12 @@ const Subcategory = require("../models/Subcategory");
 const escapeXml = (unsafe = "") => {
   return String(unsafe).replace(/[<>&'"]/g, (c) => {
     switch (c) {
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case "&":
-        return "&amp;";
-      case "'":
-        return "&apos;";
-      case '"':
-        return "&quot;";
-      default:
-        return c;
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case "&": return "&amp;";
+      case "'": return "&apos;";
+      case '"': return "&quot;";
+      default: return c;
     }
   });
 };
@@ -39,14 +33,18 @@ const formatDate = (date) => {
 
 /**
  * Generate Dynamic Sitemap XML from MongoDB Atlas collections
- * GET /sitemap.xml or GET /api/v1/sitemap.xml
+ * GET /sitemap.xml
+ *
+ * URL format EXACTLY matches live Expo web client routing:
+ *  - Category product listing : /products?categoryId=:catId
+ *  - Subcategory listing      : /products?categoryId=:catId&subCategoryId=:subCatId
+ *  - Published blogs          : /blog/:slug
  */
 const getSitemapXml = async (req, res) => {
   try {
-    // Production main website domain for public URLs (defaults to https://ashirwadfurnex.com)
     const baseUrl = (process.env.SITE_URL || "https://ashirwadfurnex.com").replace(/\/$/, "");
 
-    // 1. Static Core Pages (matching React Native / Expo web client routing)
+    // 1. Static Core Pages (matches Expo Router screen paths)
     const staticPages = [
       { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily" },
       { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly" },
@@ -59,31 +57,22 @@ const getSitemapXml = async (req, res) => {
       { url: `${baseUrl}/search`, priority: "0.6", changefreq: "weekly" },
     ];
 
-    // 2. Fetch Active Data in parallel from MongoDB
-    const [blogs, products, categories, subcategories] = await Promise.all([
-      // Only published blogs
+    // 2. Fetch data from MongoDB in parallel
+    const [blogs, categories, subcategories] = await Promise.all([
       Blog.find({ status: "published" }, "slug updatedAt createdAt")
         .sort({ updatedAt: -1 })
         .lean(),
 
-      // Only active products
-      Product.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id")
-        .sort({ updatedAt: -1 })
-        .lean(),
-
-      // Only active categories
-      Category.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id")
+      Category.find({}, "slug updatedAt createdAt _id")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
 
-      // Only active subcategories
-      Subcategory.find({ isActive: { $ne: false } }, "slug updatedAt createdAt _id category")
+      Subcategory.find({}, "slug updatedAt createdAt _id category")
         .sort({ displayOrder: 1, updatedAt: -1 })
         .lean(),
     ]);
 
-    // Build XML string with XSL stylesheet for beautiful UI styling in browsers
-    // Note: Use relative /sitemap.xsl so browsers load the stylesheet from whichever server served sitemap.xml without CORS issues
+    // 3. Build XML
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
@@ -93,7 +82,7 @@ const getSitemapXml = async (req, res) => {
 
     const now = formatDate(new Date());
 
-    // Append Static Pages
+    // --- Static Pages ---
     for (const page of staticPages) {
       xml += `  <url>\n`;
       xml += `    <loc>${escapeXml(page.url)}</loc>\n`;
@@ -103,7 +92,35 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // Append Blogs: /blog/:slug (or /blogs/:slug)
+    // --- Categories: /products?categoryId=:catId (matches real website navigation) ---
+    for (const c of categories) {
+      const catId = String(c._id);
+      const lastmod = formatDate(c.updatedAt || c.createdAt);
+      const url = `${baseUrl}/products?categoryId=${catId}`;
+      xml += `  <url>\n`;
+      xml += `    <loc>${escapeXml(url)}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      xml += `    <changefreq>weekly</changefreq>\n`;
+      xml += `    <priority>0.7</priority>\n`;
+      xml += `  </url>\n`;
+    }
+
+    // --- Subcategories: /products?categoryId=:catId&subCategoryId=:subCatId ---
+    for (const sc of subcategories) {
+      const subCatId = String(sc._id);
+      const catId = sc.category ? String(sc.category) : null;
+      if (!catId) continue;
+      const lastmod = formatDate(sc.updatedAt || sc.createdAt);
+      const url = `${baseUrl}/products?categoryId=${catId}&subCategoryId=${subCatId}`;
+      xml += `  <url>\n`;
+      xml += `    <loc>${escapeXml(url)}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      xml += `    <changefreq>weekly</changefreq>\n`;
+      xml += `    <priority>0.7</priority>\n`;
+      xml += `  </url>\n`;
+    }
+
+    // --- Blogs: /blog/:slug ---
     for (const b of blogs) {
       if (!b.slug) continue;
       const lastmod = formatDate(b.updatedAt || b.createdAt);
@@ -112,44 +129,6 @@ const getSitemapXml = async (req, res) => {
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    // Append Products: Client website router expects /products/:productId
-    for (const p of products) {
-      const prodIdentifier = p._id ? String(p._id) : p.slug;
-      if (!prodIdentifier) continue;
-      const lastmod = formatDate(p.updatedAt || p.createdAt);
-      xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/products/${prodIdentifier}`)}</loc>\n`;
-      xml += `    <lastmod>${lastmod}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.8</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    // Append Categories: Client router expects /categories/:categoryId
-    for (const c of categories) {
-      const catIdentifier = c._id ? String(c._id) : c.slug;
-      if (!catIdentifier) continue;
-      const lastmod = formatDate(c.updatedAt || c.createdAt);
-      xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/categories/${catIdentifier}`)}</loc>\n`;
-      xml += `    <lastmod>${lastmod}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    // Append Subcategories: /subcategory/:slug
-    for (const sc of subcategories) {
-      if (!sc.slug) continue;
-      const lastmod = formatDate(sc.updatedAt || sc.createdAt);
-      xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/subcategory/${sc.slug}`)}</loc>\n`;
-      xml += `    <lastmod>${lastmod}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.6</priority>\n`;
       xml += `  </url>\n`;
     }
 
