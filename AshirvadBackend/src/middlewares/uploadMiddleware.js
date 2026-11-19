@@ -20,15 +20,15 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-// Gallery settings: supports Images and Videos
-const galleryAllowedExtensions = [
+// Media settings (Images and Videos)
+const mediaAllowedExtensions = [
   // Images
   ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg",
   // Videos
   ".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v",
 ];
 
-const galleryAllowedMimeTypes = [
+const mediaAllowedMimeTypes = [
   // Images
   "image/jpeg",
   "image/png",
@@ -46,12 +46,12 @@ const galleryAllowedMimeTypes = [
   "video/ogg",
 ];
 
-const galleryFileFilter = (req, file, cb) => {
+const mediaFileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
 
   if (
-    !galleryAllowedExtensions.includes(ext) ||
-    !galleryAllowedMimeTypes.includes(file.mimetype)
+    !mediaAllowedExtensions.includes(ext) ||
+    !mediaAllowedMimeTypes.includes(file.mimetype)
   ) {
     return cb(
       new Error(
@@ -141,16 +141,20 @@ const createMongoUpload = (folderName, options = {}) => {
 const uploadBanner = createMongoUpload("banners");
 const uploadCategory = createMongoUpload("categories");
 const uploadSubcategory = createMongoUpload("subcategories");
-const uploadProduct = createMongoUpload("products");
-// Product with color variants: allows uploading main images + variant images in one request
+const uploadProduct = createMongoUpload("products", {
+  fileFilter: mediaFileFilter,
+  limits: { files: 20, fileSize: 100 * 1024 * 1024 },
+});
+// Product with color variants: allows uploading main media + variant media (images and videos) in one request
 // Field names: "images" (main), "variant_0_images", "variant_1_images", ... etc.
 const uploadProductWithVariants = createMongoUpload("products", {
-  limits: { files: 60, fileSize: 10 * 1024 * 1024 },
+  fileFilter: mediaFileFilter,
+  limits: { files: 60, fileSize: 100 * 1024 * 1024 }, // 100MB per file to allow product videos
 });
 const uploadReview = createMongoUpload("reviews");
 const uploadBlog = createMongoUpload("blogs");
 const uploadGallery = createMongoUpload("gallery", {
-  fileFilter: galleryFileFilter,
+  fileFilter: mediaFileFilter,
   limits: {
     files: 5,
     fileSize: 100 * 1024 * 1024,

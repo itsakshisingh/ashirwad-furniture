@@ -9,6 +9,7 @@ const fs = require("fs");
  * - /uploads/:filename
  * - /product-images/:filename
  * - /api/v1/media/:id
+ * Supports HTTP Range requests for video streaming (seeking, scrubbing)
  */
 const serveMedia = async (req, res, next) => {
   try {
@@ -26,9 +27,38 @@ const serveMedia = async (req, res, next) => {
     }
 
     if (media && media.data) {
-      res.set("Content-Type", media.contentType || "image/jpeg");
+      const contentType = media.contentType || "application/octet-stream";
+      const totalSize = media.size || media.data.length;
+
+      res.set("Content-Type", contentType);
+      res.set("Accept-Ranges", "bytes");
+
+      // Handle Range request for video streaming
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+
+        if (start >= totalSize || end >= totalSize) {
+          res.status(416).set("Content-Range", `bytes */${totalSize}`);
+          return res.end();
+        }
+
+        const chunkSize = end - start + 1;
+        const bufferChunk = media.data.subarray(start, end + 1);
+
+        res.status(206);
+        res.set({
+          "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+          "Content-Length": chunkSize,
+          "Cache-Control": "public, max-age=31536000, immutable",
+        });
+        return res.send(bufferChunk);
+      }
+
       res.set("Cache-Control", "public, max-age=31536000, immutable");
-      res.set("Content-Length", media.size || media.data.length);
+      res.set("Content-Length", totalSize);
       return res.send(media.data);
     }
 
@@ -41,7 +71,7 @@ const serveMedia = async (req, res, next) => {
     // Not found
     return res.status(404).json({
       success: false,
-      message: "Image not found",
+      message: "Media not found",
     });
   } catch (error) {
     next(error);
@@ -51,4 +81,3 @@ const serveMedia = async (req, res, next) => {
 module.exports = {
   serveMedia,
 };
-

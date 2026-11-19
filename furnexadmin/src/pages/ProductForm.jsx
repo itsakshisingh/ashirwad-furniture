@@ -6,6 +6,8 @@ import {
   ChevronDown,
   ChevronUp,
   ImagePlus,
+  Video,
+  Play,
   Layers,
   Palette,
   Plus,
@@ -14,11 +16,27 @@ import {
   Tag,
   Trash2,
   X,
+  Sparkles,
+  Info,
+  Package,
+  Truck,
+  CheckCircle2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { categoriesApi, productsApi, subcategoriesApi } from "../api/services";
-import { errMsg, getList, idOf, imgUrl, pickItem, slugify } from "../utils/helpers";
-import { Field, PageLoader, Spinner } from "../components/ui";
+import { errMsg, formatPrice, getList, idOf, imgUrl, isVideoMedia, pickItem, slugify } from "../utils/helpers";
+import { Badge, Field, PageLoader, Spinner } from "../components/ui";
+
+const COLOR_PRESETS = [
+  { name: "Matte Black", hex: "#1a1a1a" },
+  { name: "Pure White", hex: "#ffffff" },
+  { name: "Dark Walnut", hex: "#3e2723" },
+  { name: "Natural Teak", hex: "#8d6e63" },
+  { name: "Charcoal Grey", hex: "#455a64" },
+  { name: "Royal Blue", hex: "#1565c0" },
+  { name: "Cream Beige", hex: "#d7ccc8" },
+  { name: "Forest Green", hex: "#2e7d32" },
+];
 
 const EMPTY_VARIANT = {
   colorName: "Standard",
@@ -32,7 +50,7 @@ const EMPTY_VARIANT = {
   stockStatus: "in_stock",
   allowBackorder: false,
   specifications: {
-    brand: "",
+    brand: "Furnex",
     material: "",
     upholstery: "",
     seatingCapacity: "",
@@ -217,7 +235,7 @@ function fromServer(d) {
               d.inventory?.allowBackorder ??
               false,
             specifications: {
-              brand: s.brand || "",
+              brand: s.brand || "Furnex",
               material: s.material || "",
               upholstery: s.upholstery || "",
               seatingCapacity: s.seatingCapacity != null ? String(s.seatingCapacity) : "",
@@ -251,7 +269,7 @@ function fromServer(d) {
             stockQuantity: d.inventory?.stockQuantity ?? 10,
             existingImages: Array.isArray(d.images) ? d.images : [],
             specifications: {
-              brand: d.specifications?.brand || "",
+              brand: d.specifications?.brand || "Furnex",
               material: d.specifications?.material || "",
               upholstery: d.specifications?.upholstery || "",
               seatingCapacity: d.specifications?.seatingCapacity != null ? String(d.specifications.seatingCapacity) : "",
@@ -278,19 +296,24 @@ function fromServer(d) {
   };
 }
 
-function Section({ title, hint, children }) {
+function Section({ title, hint, icon: Icon, children }) {
   return (
-    <section className="card">
-      <div className="border-b border-stone-200 px-5 py-3">
-        <h2 className="font-bold">{title}</h2>
-        {hint && <p className="text-xs text-stone-500">{hint}</p>}
+    <section className="card shadow-sm border border-stone-200 overflow-hidden">
+      <div className="border-b border-stone-200 bg-stone-50/80 px-6 py-4 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="h-5 w-5 text-emerald-700" />}
+            <h2 className="font-bold text-ink-900 text-base">{title}</h2>
+          </div>
+          {hint && <p className="text-xs text-stone-500 mt-0.5">{hint}</p>}
+        </div>
       </div>
-      <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+      <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
     </section>
   );
 }
 
-// Complete Variant Card Component containing all details
+// Modern Clean Variant Card with Sub-Tabs
 function VariantCard({
   variant,
   index,
@@ -299,11 +322,15 @@ function VariantCard({
   onRemove,
   onSetDefault,
 }) {
-  const [open, setOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState("photos"); // "photos" | "pricing" | "specs"
   const fileInputRef = useRef(null);
 
-  const previewUrls = useMemo(() => {
-    return (variant.newFiles || []).map((f) => URL.createObjectURL(f));
+  const previewItems = useMemo(() => {
+    return (variant.newFiles || []).map((f) => ({
+      url: URL.createObjectURL(f),
+      isVideo: f.type ? f.type.startsWith("video/") : isVideoMedia(f.name),
+      name: f.name,
+    }));
   }, [variant.newFiles]);
 
   const handleAddFiles = (e) => {
@@ -361,435 +388,525 @@ function VariantCard({
   const dims = specs.dimensions || {};
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-white shadow-sm overflow-hidden transition">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 px-5 py-3.5">
+    <div className="rounded-xl border border-stone-200 bg-white shadow-sm overflow-hidden transition-all duration-200">
+      {/* Variant Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-stone-50/90 px-5 py-3.5">
         <div className="flex items-center gap-3">
           <div
-            className="h-8 w-8 rounded-full border border-stone-300 shadow-inner flex items-center justify-center shrink-0 cursor-pointer"
+            className="h-9 w-9 rounded-full border-2 border-white shadow flex items-center justify-center shrink-0"
             style={{ backgroundColor: variant.colorHex || "#1a1a1a" }}
-            title={`Color: ${variant.colorHex}`}
+            title={`Color code: ${variant.colorHex}`}
           >
-            {variant.isDefault && <Check className="h-4 w-4 text-white drop-shadow" />}
+            {variant.isDefault && <Check className="h-4 w-4 text-white drop-shadow-md" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-ink-900 text-base">
+              <span className="font-extrabold text-ink-900 text-base">
                 {variant.colorName || `Variant #${index + 1}`}
               </span>
-              {variant.isDefault && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              {variant.isDefault ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
                   <Star className="h-3 w-3 fill-emerald-600" /> Default Variant
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSetDefault}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline px-2 py-0.5 bg-emerald-50 rounded"
+                >
+                  Set as Default
+                </button>
               )}
             </div>
             <p className="text-xs text-stone-500 font-mono mt-0.5">
-              Price: ₹{variant.price || 0} {variant.mrp ? `(MRP: ₹${variant.mrp})` : ""} •{" "}
+              Price: ₹{variant.price || 0} {variant.mrp ? `• MRP: ₹${variant.mrp}` : ""} •{" "}
               {variant.stockQuantity || 0} in stock • {totalImages} {totalImages === 1 ? "photo" : "photos"}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {!variant.isDefault && (
-            <button
-              type="button"
-              onClick={onSetDefault}
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline px-2.5 py-1"
-            >
-              Set as Default
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="p-1.5 text-stone-500 hover:bg-stone-200 rounded-lg transition"
-            aria-label="Toggle details"
-          >
-            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-
           {total > 1 && (
             <button
               type="button"
               onClick={onRemove}
-              className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-              aria-label="Delete variant"
+              className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition"
+              title="Delete this variant"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" /> Remove
             </button>
           )}
         </div>
       </div>
 
-      {open && (
-        <div className="p-5 space-y-6">
-          {/* Sub-Section 1: Color, SKU & Multiple Photos */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Palette className="h-4 w-4 text-brass-600" />
-              <h3 className="text-sm font-bold text-ink-900 uppercase tracking-wider">
-                1. Color & Photos
-              </h3>
-            </div>
+      {/* Sub-Tabs Navigation */}
+      <div className="flex border-b border-stone-200 bg-stone-100/60 px-5 gap-2 pt-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("photos")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition border-t-2 ${
+            activeTab === "photos"
+              ? "bg-white text-emerald-800 border-emerald-600 shadow-sm"
+              : "text-stone-500 hover:text-stone-800 border-transparent hover:bg-stone-200/50"
+          }`}
+        >
+          <Palette className="h-3.5 w-3.5" /> Color & Photos ({totalImages})
+        </button>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-4">
-              <Field label="Color / Style Name *" hint="e.g. Dark Black & Grey">
+        <button
+          type="button"
+          onClick={() => setActiveTab("pricing")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition border-t-2 ${
+            activeTab === "pricing"
+              ? "bg-white text-emerald-800 border-emerald-600 shadow-sm"
+              : "text-stone-500 hover:text-stone-800 border-transparent hover:bg-stone-200/50"
+          }`}
+        >
+          <Tag className="h-3.5 w-3.5" /> Pricing & Stock (₹{variant.price || 0})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("specs")}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition border-t-2 ${
+            activeTab === "specs"
+              ? "bg-white text-emerald-800 border-emerald-600 shadow-sm"
+              : "text-stone-500 hover:text-stone-800 border-transparent hover:bg-stone-200/50"
+          }`}
+        >
+          <Sliders className="h-3.5 w-3.5" /> Dimensions & Specs
+        </button>
+      </div>
+
+      {/* Tab 1: Color & Photos */}
+      {activeTab === "photos" && (
+        <div className="p-6 space-y-5 animate-fadeIn">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Color / Style Name *" hint="e.g. Dark Black & Grey">
+              <input
+                className="input font-semibold"
+                required
+                placeholder="e.g. Dark Black & Grey"
+                value={variant.colorName}
+                onChange={(e) => onUpdate({ ...variant, colorName: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Color Swatch & Hex" hint="Visual color shown on website">
+              <div className="flex items-center gap-2">
                 <input
-                  className="input"
-                  required
-                  placeholder="e.g. Dark Black & Grey"
-                  value={variant.colorName}
-                  onChange={(e) => onUpdate({ ...variant, colorName: e.target.value })}
+                  type="color"
+                  className="h-10 w-12 cursor-pointer rounded border border-stone-300 p-0.5 bg-white shrink-0 shadow-sm"
+                  value={variant.colorHex || "#1a1a1a"}
+                  onChange={(e) => onUpdate({ ...variant, colorHex: e.target.value })}
                 />
-              </Field>
-
-              <Field label="Color Swatch & Code" hint="Pick color for dots on website">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    className="h-10 w-12 cursor-pointer rounded border border-stone-300 p-0.5 bg-white shrink-0"
-                    value={variant.colorHex || "#1a1a1a"}
-                    onChange={(e) => onUpdate({ ...variant, colorHex: e.target.value })}
-                  />
-                  <input
-                    className="input font-mono uppercase"
-                    placeholder="#1A1A1A"
-                    value={variant.colorHex}
-                    onChange={(e) => onUpdate({ ...variant, colorHex: e.target.value })}
-                  />
-                </div>
-              </Field>
-
-              <Field label="Variant SKU" hint="SKU specific to this variant">
                 <input
-                  className="input uppercase"
-                  placeholder="e.g. CHR-BLK-01"
-                  value={variant.sku}
-                  onChange={(e) => onUpdate({ ...variant, sku: e.target.value })}
-                />
-              </Field>
-            </div>
-
-            {/* Photos Uploader */}
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-bold text-stone-700">
-                    Multiple Photos for this Variant ({totalImages})
-                  </p>
-                  <p className="text-[11px] text-stone-500">
-                    Upload photos of this color. First photo will show as the swatch thumbnail.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn-brass !py-1 !px-3 !text-xs"
-                >
-                  <ImagePlus className="h-3.5 w-3.5" /> + Upload Photos
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleAddFiles}
+                  className="input font-mono uppercase"
+                  placeholder="#1A1A1A"
+                  value={variant.colorHex}
+                  onChange={(e) => onUpdate({ ...variant, colorHex: e.target.value })}
                 />
               </div>
+            </Field>
 
-              <div className="flex flex-wrap gap-3">
-                {/* Existing Images */}
-                {(variant.existingImages || []).map((img, i) => (
+            <Field label="Variant SKU" hint="Optional variant code">
+              <input
+                className="input uppercase font-mono"
+                placeholder="e.g. CHR-BLK-01"
+                value={variant.sku}
+                onChange={(e) => onUpdate({ ...variant, sku: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          {/* Quick Color Presets */}
+          <div>
+            <p className="text-[11px] font-semibold text-stone-500 mb-2">
+              Quick Color Presets (Click to apply):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PRESETS.map((cp) => (
+                <button
+                  key={cp.name}
+                  type="button"
+                  onClick={() =>
+                    onUpdate({
+                      ...variant,
+                      colorName: cp.name,
+                      colorHex: cp.hex,
+                    })
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-700 hover:bg-stone-100 hover:border-stone-400 transition"
+                >
+                  <span
+                    className="h-3 w-3 rounded-full border border-stone-300 shrink-0"
+                    style={{ backgroundColor: cp.hex }}
+                  />
+                  <span>{cp.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Photos & Videos Box */}
+          <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+                  <ImagePlus className="h-4 w-4 text-brass-600" /> Media for {variant.colorName || "this variant"} ({totalImages})
+                </p>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Photos (JPG, PNG, WebP) aur Videos (MP4, WebM, MOV) allowed hain. First photo swatch thumbnail rahegi.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-brass !py-1.5 !px-3.5 !text-xs inline-flex items-center gap-1.5"
+              >
+                <Video className="h-3.5 w-3.5" /> Add Photos / Video
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/*"
+                multiple
+                className="hidden"
+                onChange={handleAddFiles}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              {/* Existing Server Media */}
+              {(variant.existingImages || []).map((img, i) => {
+                const isVid = isVideoMedia(img);
+                return (
                   <div
                     key={img + i}
-                    className="group relative h-24 w-24 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm"
+                    className="group relative h-24 w-24 overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm transition hover:shadow-md"
                   >
-                    <img src={imgUrl(img)} alt="" className="h-full w-full object-cover" />
+                    {isVid ? (
+                      <video
+                        src={imgUrl(img)}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.pause();
+                          e.currentTarget.currentTime = 0;
+                        }}
+                      />
+                    ) : (
+                      <img src={imgUrl(img)} alt="" className="h-full w-full object-cover" />
+                    )}
+
+                    {isVid && (
+                      <span className="absolute top-1 left-1 rounded bg-red-600/90 px-1 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
+                        <Video className="h-2.5 w-2.5" /> Video
+                      </span>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handleRemoveExistingImg(img)}
-                      className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition"
-                      title="Remove image"
+                      className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
+                      title="Remove"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3 w-3" />
                     </button>
                     {i === 0 && (
-                      <span className="absolute bottom-1 left-1 rounded bg-ink-900/90 px-1.5 text-[9px] font-semibold text-white">
+                      <span className="absolute bottom-1 left-1 rounded bg-ink-900/90 px-1.5 text-[10px] font-bold text-white shadow">
                         Cover
                       </span>
                     )}
                   </div>
-                ))}
+                );
+              })}
 
-                {/* New Picked Images */}
-                {previewUrls.map((url, i) => (
-                  <div
-                    key={url}
-                    className="group relative h-24 w-24 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm"
-                  >
-                    <img src={url} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute bottom-1 left-1 rounded bg-emerald-600 px-1.5 text-[9px] font-semibold text-white">
+              {/* New Selected Files */}
+              {previewItems.map((item, i) => (
+                <div
+                  key={item.url}
+                  className="group relative h-24 w-24 overflow-hidden rounded-xl border-2 border-emerald-500 bg-black shadow-sm transition hover:shadow-md"
+                >
+                  {item.isVideo ? (
+                    <video
+                      src={item.url}
+                      className="h-full w-full object-cover"
+                      muted
+                      playsInline
+                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.pause();
+                        e.currentTarget.currentTime = 0;
+                      }}
+                    />
+                  ) : (
+                    <img src={item.url} alt="" className="h-full w-full object-cover" />
+                  )}
+
+                  {item.isVideo ? (
+                    <span className="absolute top-1 left-1 rounded bg-red-600/90 px-1 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
+                      <Video className="h-2.5 w-2.5" /> Video
+                    </span>
+                  ) : (
+                    <span className="absolute bottom-1 left-1 rounded bg-emerald-600 px-1.5 text-[10px] font-bold text-white shadow">
                       New
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveNewFile(i)}
-                      className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition"
-                      title="Remove image"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  )}
 
-                {totalImages === 0 && (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-xs text-stone-500 hover:border-emerald-600 hover:text-emerald-700 bg-white"
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveNewFile(i)}
+                    className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
+                    title="Remove"
                   >
-                    <ImagePlus className="mb-1.5 h-6 w-6 text-stone-400" />
-                    <span>Click to add photos for {variant.colorName || "this variant"}</span>
-                  </div>
-                )}
-              </div>
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+
+              {totalImages === 0 && (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 text-xs text-stone-500 hover:border-emerald-600 hover:text-emerald-700 bg-white transition"
+                >
+                  <Video className="mb-1.5 h-6 w-6 text-stone-400" />
+                  <span className="font-semibold">Click to select photos or videos for {variant.colorName || "this variant"}</span>
+                  <span className="text-[11px] text-stone-400 mt-0.5">Photos (JPG, PNG, WebP) & Videos (MP4, WebM, MOV) up to 100MB</span>
+                </div>
+              )}
             </div>
           </div>
+        </div>
+      )}
 
-          <hr className="border-stone-200" />
-
-          {/* Sub-Section 2: Pricing & Stock */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Tag className="h-4 w-4 text-emerald-700" />
-              <h3 className="text-sm font-bold text-ink-900 uppercase tracking-wider">
-                2. Pricing & Stock for this Variant
-              </h3>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-3">
-              <Field label="Price (₹) *" hint="Selling price for this variant">
+      {/* Tab 2: Pricing & Stock */}
+      {activeTab === "pricing" && (
+        <div className="p-6 space-y-5 animate-fadeIn">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Selling Price (₹) *" hint="Final price user pays">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-2.5 text-stone-400 font-bold">₹</span>
                 <input
                   type="number"
                   min="0"
                   required
-                  className="input font-semibold"
+                  className="input pl-8 font-bold text-ink-900 text-base"
                   placeholder="e.g. 3799"
                   value={variant.price}
                   onChange={(e) => onUpdate({ ...variant, price: e.target.value })}
                 />
-              </Field>
+              </div>
+            </Field>
 
-              <Field label="MRP / Original Price (₹)" hint="Amazon strikethrough price">
+            <Field label="MRP / List Price (₹)" hint="Amazon strikethrough price">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-2.5 text-stone-400 font-bold">₹</span>
                 <input
                   type="number"
                   min="0"
-                  className="input"
+                  className="input pl-8"
                   placeholder="e.g. 7598"
                   value={variant.mrp}
                   onChange={(e) => onUpdate({ ...variant, mrp: e.target.value })}
                 />
-              </Field>
+              </div>
+            </Field>
 
-              <Field label="Tax (%)">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  className="input"
-                  value={variant.taxPercentage ?? 0}
-                  onChange={(e) => onUpdate({ ...variant, taxPercentage: e.target.value })}
-                />
-              </Field>
-            </div>
+            <Field label="Tax Percentage (%)">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                className="input"
+                placeholder="e.g. 18"
+                value={variant.taxPercentage ?? 0}
+                onChange={(e) => onUpdate({ ...variant, taxPercentage: e.target.value })}
+              />
+            </Field>
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Quantity in Stock">
-                <input
-                  type="number"
-                  min="0"
-                  className="input"
-                  value={variant.stockQuantity}
-                  onChange={(e) => onUpdate({ ...variant, stockQuantity: e.target.value })}
-                />
-              </Field>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Quantity in Stock" hint="Available inventory">
+              <input
+                type="number"
+                min="0"
+                className="input"
+                value={variant.stockQuantity}
+                onChange={(e) => onUpdate({ ...variant, stockQuantity: e.target.value })}
+              />
+            </Field>
 
-              <Field label="Low Stock Alert At">
-                <input
-                  type="number"
-                  min="0"
-                  className="input"
-                  value={variant.lowStockThreshold ?? 5}
-                  onChange={(e) => onUpdate({ ...variant, lowStockThreshold: e.target.value })}
-                />
-              </Field>
+            <Field label="Low Stock Alert At" hint="Notify when stock is below">
+              <input
+                type="number"
+                min="0"
+                className="input"
+                value={variant.lowStockThreshold ?? 5}
+                onChange={(e) => onUpdate({ ...variant, lowStockThreshold: e.target.value })}
+              />
+            </Field>
 
-              <Field label="Stock Status">
-                <select
-                  className="input"
-                  value={variant.stockStatus}
-                  onChange={(e) => onUpdate({ ...variant, stockStatus: e.target.value })}
-                >
-                  <option value="in_stock">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                  <option value="discontinued">Discontinued</option>
-                </select>
-              </Field>
-            </div>
+            <Field label="Stock Status">
+              <select
+                className="input"
+                value={variant.stockStatus}
+                onChange={(e) => onUpdate({ ...variant, stockStatus: e.target.value })}
+              >
+                <option value="in_stock">In Stock (Available)</option>
+                <option value="low_stock">Low Stock (Limited)</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="discontinued">Discontinued</option>
+              </select>
+            </Field>
+          </div>
 
-            <label className="flex items-center gap-2 pt-2 text-xs text-stone-600">
+          <div className="pt-1">
+            <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer">
               <input
                 type="checkbox"
-                className="h-4 w-4 accent-emerald-700"
+                className="h-4 w-4 accent-emerald-700 rounded"
                 checked={!!variant.allowBackorder}
                 onChange={(e) => onUpdate({ ...variant, allowBackorder: e.target.checked })}
               />{" "}
-              Allow orders when out of stock
+              Allow customers to order when out of stock (Backorder)
             </label>
           </div>
+        </div>
+      )}
 
-          <hr className="border-stone-200" />
+      {/* Tab 3: Dimensions & Specs */}
+      {activeTab === "specs" && (
+        <div className="p-6 space-y-5 animate-fadeIn">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Brand">
+              <input
+                className="input"
+                placeholder="e.g. Furnex"
+                value={specs.brand || "Furnex"}
+                onChange={(e) => setSpec("brand", e.target.value)}
+              />
+            </Field>
 
-          {/* Sub-Section 3: Variant Specifications */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Sliders className="h-4 w-4 text-stone-700" />
-              <h3 className="text-sm font-bold text-ink-900 uppercase tracking-wider">
-                3. Specifications for this Variant
-              </h3>
-            </div>
+            <Field label="Material">
+              <input
+                className="input"
+                placeholder="e.g. High Grade Nylon / Metal"
+                value={specs.material || ""}
+                onChange={(e) => setSpec("material", e.target.value)}
+              />
+            </Field>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-3">
-              <Field label="Brand">
-                <input
-                  className="input"
-                  placeholder="e.g. Furnex"
-                  value={specs.brand || ""}
-                  onChange={(e) => setSpec("brand", e.target.value)}
-                />
-              </Field>
+            <Field label="Upholstery">
+              <input
+                className="input"
+                placeholder="e.g. Breathable Mesh / Leatherette"
+                value={specs.upholstery || ""}
+                onChange={(e) => setSpec("upholstery", e.target.value)}
+              />
+            </Field>
+          </div>
 
-              <Field label="Material">
-                <input
-                  className="input"
-                  placeholder="e.g. High Grade Nylon / Metal"
-                  value={specs.material || ""}
-                  onChange={(e) => setSpec("material", e.target.value)}
-                />
-              </Field>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Seating Capacity">
+              <input
+                type="number"
+                min="0"
+                className="input"
+                placeholder="e.g. 1"
+                value={specs.seatingCapacity || ""}
+                onChange={(e) => setSpec("seatingCapacity", e.target.value)}
+              />
+            </Field>
 
-              <Field label="Upholstery">
-                <input
-                  className="input"
-                  placeholder="e.g. Breathable Mesh"
-                  value={specs.upholstery || ""}
-                  onChange={(e) => setSpec("upholstery", e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label="Warranty">
+              <input
+                className="input"
+                placeholder="e.g. 2 Years Manufacturer Warranty"
+                value={specs.warranty || ""}
+                onChange={(e) => setSpec("warranty", e.target.value)}
+              />
+            </Field>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-3">
-              <Field label="Seating Capacity">
-                <input
-                  type="number"
-                  min="0"
-                  className="input"
-                  placeholder="e.g. 1"
-                  value={specs.seatingCapacity || ""}
-                  onChange={(e) => setSpec("seatingCapacity", e.target.value)}
-                />
-              </Field>
-
-              <Field label="Warranty">
-                <input
-                  className="input"
-                  placeholder="e.g. 2 Years"
-                  value={specs.warranty || ""}
-                  onChange={(e) => setSpec("warranty", e.target.value)}
-                />
-              </Field>
-
-              <Field label="Weight">
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Weight"
-                    className="input"
-                    value={specs.weight || ""}
-                    onChange={(e) => setSpec("weight", e.target.value)}
-                  />
-                  <select
-                    className="input !w-24 shrink-0"
-                    value={specs.weightUnit || "kg"}
-                    onChange={(e) => setSpec("weightUnit", e.target.value)}
-                  >
-                    <option value="kg">kg</option>
-                    <option value="g">g</option>
-                  </select>
-                </div>
-              </Field>
-            </div>
-
-            <Field label="Dimensions (Length / Width / Height)" className="mb-3">
+            <Field label="Weight">
               <div className="flex gap-2">
                 <input
                   type="number"
                   min="0"
-                  placeholder="Length"
+                  placeholder="e.g. 14"
                   className="input"
-                  value={dims.length || ""}
-                  onChange={(e) => setDim("length", e.target.value)}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Width"
-                  className="input"
-                  value={dims.width || ""}
-                  onChange={(e) => setDim("width", e.target.value)}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Height"
-                  className="input"
-                  value={dims.height || ""}
-                  onChange={(e) => setDim("height", e.target.value)}
+                  value={specs.weight || ""}
+                  onChange={(e) => setSpec("weight", e.target.value)}
                 />
                 <select
-                  className="input !w-24 shrink-0"
-                  value={dims.unit || "cm"}
-                  onChange={(e) => setDim("unit", e.target.value)}
+                  className="input !w-24 shrink-0 font-medium"
+                  value={specs.weightUnit || "kg"}
+                  onChange={(e) => setSpec("weightUnit", e.target.value)}
                 >
-                  <option value="cm">cm</option>
-                  <option value="inch">inch</option>
-                  <option value="mm">mm</option>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
                 </select>
               </div>
             </Field>
-
-            <div className="flex items-center gap-2 pt-1 text-xs">
-              <label className="flex items-center gap-2 text-stone-700">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-emerald-700"
-                  checked={!!specs.assemblyRequired}
-                  onChange={(e) => setSpec("assemblyRequired", e.target.checked)}
-                />{" "}
-                Assembly required
-              </label>
-            </div>
           </div>
 
-          <Field label="Variant Notes / Specific Features (Optional)">
+          <Field label="Dimensions (Length / Width / Height)">
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                placeholder="Length"
+                className="input"
+                value={dims.length || ""}
+                onChange={(e) => setDim("length", e.target.value)}
+              />
+              <input
+                type="number"
+                min="0"
+                placeholder="Width"
+                className="input"
+                value={dims.width || ""}
+                onChange={(e) => setDim("width", e.target.value)}
+              />
+              <input
+                type="number"
+                min="0"
+                placeholder="Height"
+                className="input"
+                value={dims.height || ""}
+                onChange={(e) => setDim("height", e.target.value)}
+              />
+              <select
+                className="input !w-24 shrink-0 font-medium"
+                value={dims.unit || "cm"}
+                onChange={(e) => setDim("unit", e.target.value)}
+              >
+                <option value="cm">cm</option>
+                <option value="inch">inch</option>
+                <option value="mm">mm</option>
+              </select>
+            </div>
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2 pt-1">
+            <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-emerald-700 rounded"
+                checked={!!specs.assemblyRequired}
+                onChange={(e) => setSpec("assemblyRequired", e.target.checked)}
+              />{" "}
+              Assembly Required by Customer
+            </label>
+          </div>
+
+          <Field label="Specific Features / Notes for this Variant (Optional)">
             <input
               className="input text-xs"
-              placeholder="e.g. Includes chrome base and 2D adjustable armrests"
+              placeholder="e.g. 2D adjustable armrests, heavy duty chrome wheelbase"
               value={variant.description || ""}
               onChange={(e) => onUpdate({ ...variant, description: e.target.value })}
             />
@@ -848,10 +965,10 @@ export default function ProductForm() {
   });
 
   const check = (path, label) => (
-    <label className="flex items-center gap-2 pt-1 text-sm">
+    <label className="flex items-center gap-2 pt-1 text-sm font-medium text-stone-700 cursor-pointer">
       <input
         type="checkbox"
-        className="h-4 w-4 accent-emerald-700"
+        className="h-4 w-4 accent-emerald-700 rounded"
         checked={!!get(path)}
         onChange={(e) => set(path, e.target.checked)}
       />{" "}
@@ -867,13 +984,15 @@ export default function ProductForm() {
   // Variant Helpers
   const addVariant = () => {
     const isFirst = (p.colorVariants || []).length === 0;
+    const nextCount = (p.colorVariants || []).length + 1;
     setP((prev) => ({
       ...prev,
       colorVariants: [
         ...(prev.colorVariants || []),
         {
           ...EMPTY_VARIANT,
-          colorName: `Color #${(prev.colorVariants || []).length + 1}`,
+          colorName: `Color #${nextCount}`,
+          colorHex: COLOR_PRESETS[nextCount % COLOR_PRESETS.length]?.hex || "#1a1a1a",
           isDefault: isFirst,
         },
       ],
@@ -935,30 +1054,38 @@ export default function ProductForm() {
   if (loading) return <PageLoader />;
 
   return (
-    <form onSubmit={submit} className="space-y-6 pb-24">
+    <form onSubmit={submit} className="space-y-6 pb-28">
+      {/* Page Title */}
       <div>
         <Link
           to="/products"
-          className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-ink-900"
+          className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-500 hover:text-ink-900 transition"
         >
           <ArrowLeft className="h-4 w-4" /> Back to products
         </Link>
-        <h1 className="text-2xl font-extrabold tracking-tight">
-          {isEdit ? "Edit product" : "Add product"}
+        <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">
+          {isEdit ? "Edit Product" : "Add New Product"}
         </h1>
+        <p className="text-xs text-stone-500 mt-1">
+          Enter product details and manage variants (colors, photos, pricing, and specs).
+        </p>
       </div>
 
       {/* 1. BASIC DETAILS */}
-      <Section title="Basic Details">
+      <Section
+        title="Basic Details"
+        hint="General product identification and categories"
+        icon={Package}
+      >
         <Field label="Product Name *" className="sm:col-span-2">
-          <input className="input" required {...bind("name")} />
+          <input className="input font-semibold" required {...bind("name")} placeholder="e.g. Ergonomic Office Mesh Chair" />
         </Field>
         <Field label="Base SKU *">
-          <input className="input uppercase" required {...bind("sku")} />
+          <input className="input uppercase font-mono" required {...bind("sku")} placeholder="e.g. FURN-CH-01" />
         </Field>
-        <Field label="Slug *" hint="Used in the product page URL." className="sm:col-span-2">
+        <Field label="Slug *" hint="URL path for this product" className="sm:col-span-2">
           <input
-            className="input"
+            className="input font-mono text-xs"
             required
             value={p.slug}
             onChange={(e) => {
@@ -967,12 +1094,12 @@ export default function ProductForm() {
             }}
           />
         </Field>
-        <Field label="Display order">
+        <Field label="Display Order" hint="Lower numbers appear first">
           <input type="number" min="0" className="input" {...bind("displayOrder")} />
         </Field>
         <Field label="Category *">
-          <select className="input" required {...bind("category")}>
-            <option value="">Select…</option>
+          <select className="input font-medium" required {...bind("category")}>
+            <option value="">Select Category…</option>
             {cats.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
@@ -982,10 +1109,10 @@ export default function ProductForm() {
         </Field>
         <Field
           label="Subcategory"
-          hint={!p.category ? "Choose a category first." : undefined}
+          hint={!p.category ? "Choose a category first" : undefined}
         >
-          <select className="input" disabled={!p.category} {...bind("subcategory")}>
-            <option value="">None</option>
+          <select className="input font-medium" disabled={!p.category} {...bind("subcategory")}>
+            <option value="">None / All</option>
             {subOptions.map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}
@@ -993,40 +1120,44 @@ export default function ProductForm() {
             ))}
           </select>
         </Field>
-        <Field label="Short description" className="sm:col-span-2 lg:col-span-3">
-          <input className="input" maxLength={500} {...bind("shortDescription")} />
+        <Field label="Short Description" hint="Shown in search previews" className="sm:col-span-2 lg:col-span-3">
+          <input className="input" maxLength={500} {...bind("shortDescription")} placeholder="e.g. Premium ergonomic chair with breathable mesh and lumbar support" />
         </Field>
-        <Field label="Full description" className="sm:col-span-2 lg:col-span-3">
+        <Field label="Full Description" hint="Detailed overview of the product" className="sm:col-span-2 lg:col-span-3">
           <textarea
-            className="input min-h-[110px]"
+            className="input min-h-[120px] leading-relaxed"
             maxLength={5000}
             {...bind("description")}
+            placeholder="Write full product overview, features, and styling tips..."
           />
         </Field>
       </Section>
 
       {/* 2. PRODUCT VARIANTS (CONTAINING ALL DETAILS) */}
-      <section className="card">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-stone-200 px-5 py-4 gap-2">
+      <section className="card shadow-sm border border-stone-200 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-stone-200 bg-stone-50/90 px-6 py-4 gap-2">
           <div>
             <div className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-emerald-700" />
-              <h2 className="text-lg font-bold">Product Variants & Colors</h2>
+              <h2 className="text-base font-bold text-ink-900">
+                Product Variants & Colors (Amazon Style)
+              </h2>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Har variant ke andar uski saari details (Multiple Photos, Price, MRP, Stock, aur Dimensions/Specifications) aayengi.
+              Har variant ke andar uski saari photos, pricing, stock, aur specs manage karein.
             </p>
           </div>
+
           <button
             type="button"
             onClick={addVariant}
-            className="btn-brass !py-1.5 !px-3 !text-xs self-start sm:self-auto"
+            className="btn-brass !py-1.5 !px-3.5 !text-xs self-start sm:self-auto"
           >
-            <Plus className="h-4 w-4" /> + Add Another Variant
+            <Plus className="h-4 w-4" /> Add Another Variant
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-6 space-y-6 bg-stone-50/40">
           {(p.colorVariants || []).map((v, i) => (
             <VariantCard
               key={i}
@@ -1042,15 +1173,19 @@ export default function ProductForm() {
       </section>
 
       {/* 3. DELIVERY & RETURNS */}
-      <Section title="Delivery and Returns">
-        <Field label="Estimated delivery">
+      <Section
+        title="Delivery & Returns"
+        hint="Shipping timeframe and return guarantees"
+        icon={Truck}
+      >
+        <Field label="Estimated Delivery">
           <input
             className="input"
-            placeholder="e.g. 5-7 days"
+            placeholder="e.g. 5-7 business days"
             {...bind("delivery.estimatedDays")}
           />
         </Field>
-        <Field label="Return window (days)">
+        <Field label="Return Window (Days)">
           <input
             type="number"
             min="0"
@@ -1058,38 +1193,47 @@ export default function ProductForm() {
             {...bind("delivery.returnWindowDays")}
           />
         </Field>
-        <div className="space-y-2">
-          {check("delivery.freeDelivery", "Free delivery")}
-          {check("delivery.returnable", "Returnable")}
+        <div className="space-y-2 pt-2">
+          {check("delivery.freeDelivery", "Free Delivery available")}
+          {check("delivery.returnable", "Product is Returnable")}
         </div>
       </Section>
 
       {/* 4. VISIBILITY & SETTINGS */}
-      <Section title="Visibility & Settings">
-        <Field label="Tags" hint="Comma-separated tags" className="sm:col-span-2">
+      <Section
+        title="Store Visibility & Badges"
+        hint="Control product badges and catalog search tags"
+        icon={Sparkles}
+      >
+        <Field label="Search Tags" hint="Comma-separated keywords" className="sm:col-span-2">
           <input
             className="input"
-            placeholder="e.g. ergonomic, chair, office"
+            placeholder="e.g. ergonomic, mesh chair, lumbar, office furniture"
             {...bind("tags")}
           />
         </Field>
         <div className="space-y-2 pt-2">
-          {check("isFeatured", "Featured product")}
-          {check("isBestSeller", "Best seller badge")}
-          {check("isActive", "Active (visible in store)")}
+          {check("isFeatured", "Featured Product (Highlights on Homepage)")}
+          {check("isBestSeller", "Best Seller Badge")}
+          {check("isActive", "Active (Visible in Store)")}
         </div>
       </Section>
 
-      {/* Floating Save Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur lg:left-64">
-        <div className="mx-auto flex max-w-7xl justify-end gap-2">
-          <Link to="/products" className="btn-ghost">
-            Cancel
-          </Link>
-          <button className="btn-primary" disabled={saving}>
-            {saving && <Spinner className="h-4 w-4" />}
-            {isEdit ? "Save changes" : "Add product"}
-          </button>
+      {/* Floating Save Footer */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-6 py-4 backdrop-blur shadow-lg lg:left-64">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <p className="text-xs text-stone-500 hidden sm:block">
+            {(p.colorVariants || []).length} {(p.colorVariants || []).length === 1 ? "variant" : "variants"} configured
+          </p>
+          <div className="flex justify-end gap-2.5 w-full sm:w-auto">
+            <Link to="/products" className="btn-ghost">
+              Cancel
+            </Link>
+            <button className="btn-primary" disabled={saving}>
+              {saving && <Spinner className="h-4 w-4" />}
+              {isEdit ? "Save Changes" : "Create Product"}
+            </button>
+          </div>
         </div>
       </div>
     </form>

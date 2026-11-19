@@ -33,6 +33,11 @@ export function imgUrl(path) {
   return `${API_ORIGIN}/${trimmed.replace(/^\/+/, "")}`;
 }
 
+export function isVideoMedia(path) {
+  if (!path || typeof path !== "string") return false;
+  return /\.(mp4|webm|mkv|mov|avi|m4v)(\?.*)?$/i.test(path) || path.startsWith("data:video/");
+}
+
 export const idOf = (v) => (v && typeof v === "object" ? v._id : v) || "";
 
 export const slugify = (s = "") =>

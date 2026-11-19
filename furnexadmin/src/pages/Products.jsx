@@ -4,6 +4,8 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Video,
+  Play,
   Search,
   Star,
   Eye,
@@ -19,7 +21,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { categoriesApi, productsApi } from "../api/services";
-import { errMsg, formatPrice, getList, idOf, imgUrl } from "../utils/helpers";
+import { errMsg, formatPrice, getList, idOf, imgUrl, isVideoMedia } from "../utils/helpers";
 import {
   Badge,
   ConfirmDialog,
@@ -155,35 +157,61 @@ function ProductViewModal({ product, onClose }) {
         <div className="grid gap-6 md:grid-cols-2">
           {/* Gallery View */}
           <div>
-            <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-100 shadow-inner flex items-center justify-center">
+            <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-900 shadow-inner flex items-center justify-center">
               {mainImg ? (
-                <img
-                  src={imgUrl(mainImg)}
-                  alt=""
-                  className="h-full w-full object-cover transition duration-200"
-                />
+                isVideoMedia(mainImg) ? (
+                  <video
+                    src={imgUrl(mainImg)}
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <img
+                    src={imgUrl(mainImg)}
+                    alt=""
+                    className="h-full w-full object-cover transition duration-200"
+                  />
+                )
               ) : (
-                <p className="text-xs text-stone-400">No image available</p>
+                <p className="text-xs text-stone-400">No media available</p>
               )}
             </div>
 
             {/* Thumbnails */}
             {displayImages.length > 1 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {displayImages.map((src, i) => (
-                  <button
-                    key={src + i}
-                    type="button"
-                    onClick={() => setSelectedImgIdx(i)}
-                    className={`relative h-14 w-14 overflow-hidden rounded-lg border-2 transition ${
-                      selectedImgIdx === i
-                        ? "border-emerald-600 ring-2 ring-emerald-500/20"
-                        : "border-stone-200 hover:border-stone-400"
-                    }`}
-                  >
-                    <img src={imgUrl(src)} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
+                {displayImages.map((src, i) => {
+                  const isVid = isVideoMedia(src);
+                  return (
+                    <button
+                      key={src + i}
+                      type="button"
+                      onClick={() => setSelectedImgIdx(i)}
+                      className={`relative h-14 w-14 overflow-hidden rounded-lg border-2 transition ${
+                        selectedImgIdx === i
+                          ? "border-emerald-600 ring-2 ring-emerald-500/20"
+                          : "border-stone-200 hover:border-stone-400"
+                      }`}
+                    >
+                      {isVid ? (
+                        <div className="h-full w-full bg-stone-900 flex items-center justify-center text-white">
+                          <Play className="h-4 w-4 fill-white text-white" />
+                        </div>
+                      ) : (
+                        <img src={imgUrl(src)} alt="" className="h-full w-full object-cover" />
+                      )}
+                      {isVid && (
+                        <span className="absolute bottom-0.5 right-0.5 rounded bg-red-600 px-1 text-[8px] font-bold text-white">
+                          VID
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -493,17 +521,26 @@ export default function Products() {
                             title="Click to view details"
                           >
                             {resolvedImg ? (
-                              <img
-                                src={resolvedImg}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  if (e.currentTarget.nextElementSibling) {
-                                    e.currentTarget.nextElementSibling.style.display = "flex";
-                                  }
-                                }}
-                              />
+                              isVideoMedia(rawImg) ? (
+                                <div className="h-full w-full bg-stone-900 flex items-center justify-center text-white relative">
+                                  <Play className="h-4 w-4 fill-white text-white" />
+                                  <span className="absolute bottom-0.5 right-0.5 rounded bg-red-600 px-0.5 text-[8px] font-bold text-white leading-none">
+                                    VID
+                                  </span>
+                                </div>
+                              ) : (
+                                <img
+                                  src={resolvedImg}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    if (e.currentTarget.nextElementSibling) {
+                                      e.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
+                                  }}
+                                />
+                              )
                             ) : null}
                             <span
                               className="text-[10px] font-medium text-stone-400 select-none"
