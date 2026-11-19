@@ -40,8 +40,8 @@ const formatDate = (date) => {
  *    (Directly opens the Product Details view with image, specs, and Get Best Quote button)
  *  - Categories Listing:  https://ashirwadfurnex.com/products?categoryId=:catId
  *  - Subcategories:       https://ashirwadfurnex.com/products?categoryId=:catId&subCategoryId=:subCatId
- *  - Blogs:               https://ashirwadfurnex.com/blog/:slug
- *  - Core Static Pages:   /, /products, /catalog/categories, /about-ashirwad, etc.
+ *  - Blogs:               https://ashirwadfurnex.com/blogs/:slug
+ *  - Core Static Pages:   /, /products, /catalog/categories, /blogs, /about-ashirwad, etc.
  */
 const getSitemapXml = async (req, res) => {
   try {
@@ -52,6 +52,7 @@ const getSitemapXml = async (req, res) => {
       { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily", type: "Core Page", title: "Home" },
       { url: `${baseUrl}/products`, priority: "0.9", changefreq: "daily", type: "Core Page", title: "All Products & Catalog" },
       { url: `${baseUrl}/catalog/categories`, priority: "0.8", changefreq: "weekly", type: "Core Page", title: "Catalog Categories" },
+      { url: `${baseUrl}/blogs`, priority: "0.8", changefreq: "daily", type: "Core Page", title: "Furniture Blog" },
       { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly", type: "Core Page", title: "About Ashirwad Furnex" },
       { url: `${baseUrl}/projects`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Projects" },
       { url: `${baseUrl}/our-happy-customers`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Our Clients" },
@@ -117,7 +118,7 @@ const getSitemapXml = async (req, res) => {
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.9</priority>\n`;
-      xml += `    <furnex:type>Product Details</furnex:type>\n`;
+      xml += `    <furnex:type>Product</furnex:type>\n`;
       xml += `    <furnex:name>${escapeXml(displayName)}</furnex:name>\n`;
       xml += `    <furnex:category>${escapeXml(catName)}</furnex:category>\n`;
       xml += `  </url>\n`;
@@ -155,12 +156,12 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // --- Blogs: /blog/:slug ---
+    // --- Blogs: /blogs/:slug ---
     for (const b of blogs) {
       if (!b.slug) continue;
       const lastmod = formatDate(b.updatedAt || b.createdAt);
       xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/blog/${b.slug}`)}</loc>\n`;
+      xml += `    <loc>${escapeXml(`${baseUrl}/blogs/${b.slug}`)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;

@@ -201,7 +201,7 @@ export default function BlogForm() {
 
   const jsonLdData = useMemo(() => {
     const postSlug = formData.slug.trim() || "post-preview";
-    const postUrl = `${siteUrl}/blog/${postSlug}`;
+    const postUrl = `${siteUrl}/blogs/${postSlug}`;
     const coverUrl = imagePreview && imagePreview.startsWith("http")
       ? imagePreview
       : `${siteUrl}/images/default-blog.png`;

@@ -271,7 +271,7 @@ const getSitemapXsl = (req, res) => {
             <div class="stat-card">
               <div class="stat-label">Products (Direct Pages)</div>
               <div class="stat-val" style="color: #1d4ed8;">
-                <xsl:value-of select="count(sitemap:urlset/sitemap:url[furnex:type='Product'])"/>
+                <xsl:value-of select="count(sitemap:urlset/sitemap:url[furnex:type='Product' or furnex:type='Product Details'])"/>
               </div>
             </div>
             <div class="stat-card">
@@ -340,7 +340,7 @@ const getSitemapXsl = (req, res) => {
                           </xsl:choose>
                         </xsl:attribute>
                         <xsl:choose>
-                          <xsl:when test="furnex:type = 'Product'">🛍️ Product</xsl:when>
+                          <xsl:when test="furnex:type = 'Product' or furnex:type = 'Product Details'">🛍️ Product</xsl:when>
                           <xsl:when test="furnex:type = 'Category'">📁 Category</xsl:when>
                           <xsl:when test="furnex:type = 'Subcategory'">📂 Subcategory</xsl:when>
                           <xsl:when test="furnex:type = 'Blog'">📝 Blog</xsl:when>

@@ -267,6 +267,17 @@ export default function Blogs() {
 
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {blog.slug && (
+                          <a
+                            href={`https://ashirwadfurnex.com/blogs/${blog.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg p-1.5 text-ink-400 hover:bg-sand-100 hover:text-ink-700 transition"
+                            title="View Live Blog"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
                         <Link
                           to={`/blogs/${blog._id}/edit`}
                           className="rounded-lg p-1.5 text-ink-400 hover:bg-sand-100 hover:text-ink-700 transition"
