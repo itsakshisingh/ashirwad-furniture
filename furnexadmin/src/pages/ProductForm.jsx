@@ -323,7 +323,8 @@ function VariantCard({
   onSetDefault,
 }) {
   const [activeTab, setActiveTab] = useState("photos"); // "photos" | "pricing" | "specs"
-  const fileInputRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const videoInputRef = useRef(null);
 
   const previewItems = useMemo(() => {
     return (variant.newFiles || []).map((f) => ({
@@ -381,8 +382,12 @@ function VariantCard({
     });
   };
 
+  const existingVidsCount = (variant.existingImages || []).filter((s) => isVideoMedia(s)).length;
+  const newVidsCount = (variant.newFiles || []).filter((f) => (f.type ? f.type.startsWith("video/") : isVideoMedia(f.name))).length;
+  const totalVideos = existingVidsCount + newVidsCount;
   const totalImages =
     (variant.existingImages?.length || 0) + (variant.newFiles?.length || 0);
+  const totalPhotos = Math.max(0, totalImages - totalVideos);
 
   const specs = variant.specifications || {};
   const dims = specs.dimensions || {};
@@ -420,7 +425,12 @@ function VariantCard({
             </div>
             <p className="text-xs text-stone-500 font-mono mt-0.5">
               Price: ₹{variant.price || 0} {variant.mrp ? `• MRP: ₹${variant.mrp}` : ""} •{" "}
-              {variant.stockQuantity || 0} in stock • {totalImages} {totalImages === 1 ? "photo" : "photos"}
+              {variant.stockQuantity || 0} in stock • {totalPhotos} {totalPhotos === 1 ? "photo" : "photos"}
+              {totalVideos > 0 && (
+                <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[10px] font-bold">
+                  <Video className="h-2.5 w-2.5" /> {totalVideos} {totalVideos === 1 ? "video" : "videos"}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -450,7 +460,7 @@ function VariantCard({
               : "text-stone-500 hover:text-stone-800 border-transparent hover:bg-stone-200/50"
           }`}
         >
-          <Palette className="h-3.5 w-3.5" /> Color & Photos ({totalImages})
+          <Palette className="h-3.5 w-3.5" /> Color, Photos & Video ({totalImages})
         </button>
 
         <button
@@ -553,24 +563,41 @@ function VariantCard({
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-                  <ImagePlus className="h-4 w-4 text-brass-600" /> Media for {variant.colorName || "this variant"} ({totalImages})
+                  <ImagePlus className="h-4 w-4 text-brass-600" /> Media for {variant.colorName || "this variant"} ({totalPhotos} Photos{totalVideos > 0 ? `, ${totalVideos} Videos` : ""})
                 </p>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  Photos (JPG, PNG, WebP) aur Videos (MP4, WebM, MOV) allowed hain. First photo swatch thumbnail rahegi.
+                  Photos (JPG, PNG, WebP) aur Videos (MP4, WebM, MOV) upload karein. First photo swatch thumbnail rahegi.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn-brass !py-1.5 !px-3.5 !text-xs inline-flex items-center gap-1.5"
-              >
-                <Video className="h-3.5 w-3.5" /> Add Photos / Video
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="btn-brass !py-1.5 !px-3.5 !text-xs inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <ImagePlus className="h-3.5 w-3.5" /> + Add Photos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100 hover:border-purple-400 transition shadow-sm"
+                >
+                  <Video className="h-3.5 w-3.5 text-purple-600" /> + Add Video
+                </button>
+              </div>
               <input
-                ref={fileInputRef}
+                ref={photoInputRef}
                 type="file"
-                accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/*"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleAddFiles}
+              />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska,video/*"
                 multiple
                 className="hidden"
                 onChange={handleAddFiles}
@@ -584,26 +611,22 @@ function VariantCard({
                 return (
                   <div
                     key={img + i}
-                    className="group relative h-24 w-24 overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm transition hover:shadow-md"
+                    className="group relative h-28 w-28 overflow-hidden rounded-xl border border-stone-200 bg-black shadow-sm transition hover:shadow-md"
                   >
                     {isVid ? (
                       <video
                         src={imgUrl(img)}
                         className="h-full w-full object-cover"
+                        controls
                         muted
                         playsInline
-                        onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.pause();
-                          e.currentTarget.currentTime = 0;
-                        }}
                       />
                     ) : (
                       <img src={imgUrl(img)} alt="" className="h-full w-full object-cover" />
                     )}
 
                     {isVid && (
-                      <span className="absolute top-1 left-1 rounded bg-red-600/90 px-1 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
+                      <span className="absolute top-1 left-1 z-10 rounded bg-red-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
                         <Video className="h-2.5 w-2.5" /> Video
                       </span>
                     )}
@@ -611,13 +634,13 @@ function VariantCard({
                     <button
                       type="button"
                       onClick={() => handleRemoveExistingImg(img)}
-                      className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
+                      className="absolute right-1 top-1 z-10 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
                       title="Remove"
                     >
                       <X className="h-3 w-3" />
                     </button>
-                    {i === 0 && (
-                      <span className="absolute bottom-1 left-1 rounded bg-ink-900/90 px-1.5 text-[10px] font-bold text-white shadow">
+                    {i === 0 && !isVid && (
+                      <span className="absolute bottom-1 left-1 z-10 rounded bg-ink-900/90 px-1.5 text-[10px] font-bold text-white shadow">
                         Cover
                       </span>
                     )}
@@ -629,30 +652,26 @@ function VariantCard({
               {previewItems.map((item, i) => (
                 <div
                   key={item.url}
-                  className="group relative h-24 w-24 overflow-hidden rounded-xl border-2 border-emerald-500 bg-black shadow-sm transition hover:shadow-md"
+                  className="group relative h-28 w-28 overflow-hidden rounded-xl border-2 border-emerald-500 bg-black shadow-sm transition hover:shadow-md"
                 >
                   {item.isVideo ? (
                     <video
                       src={item.url}
                       className="h-full w-full object-cover"
+                      controls
                       muted
                       playsInline
-                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.pause();
-                        e.currentTarget.currentTime = 0;
-                      }}
                     />
                   ) : (
                     <img src={item.url} alt="" className="h-full w-full object-cover" />
                   )}
 
                   {item.isVideo ? (
-                    <span className="absolute top-1 left-1 rounded bg-red-600/90 px-1 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
+                    <span className="absolute top-1 left-1 z-10 rounded bg-red-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
                       <Video className="h-2.5 w-2.5" /> Video
                     </span>
                   ) : (
-                    <span className="absolute bottom-1 left-1 rounded bg-emerald-600 px-1.5 text-[10px] font-bold text-white shadow">
+                    <span className="absolute bottom-1 left-1 z-10 rounded bg-emerald-600 px-1.5 text-[10px] font-bold text-white shadow">
                       New
                     </span>
                   )}
@@ -660,7 +679,7 @@ function VariantCard({
                   <button
                     type="button"
                     onClick={() => handleRemoveNewFile(i)}
-                    className="absolute right-1 top-1 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
+                    className="absolute right-1 top-1 z-10 rounded-full bg-ink-900/80 p-1 text-white hover:bg-red-600 transition shadow"
                     title="Remove"
                   >
                     <X className="h-3 w-3" />
@@ -668,14 +687,49 @@ function VariantCard({
                 </div>
               ))}
 
+              {/* Quick Append Buttons when media exists */}
+              {totalImages > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="flex h-28 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 bg-white text-stone-500 hover:border-brass-600 hover:text-brass-700 transition"
+                    title="Add more photos"
+                  >
+                    <ImagePlus className="h-5 w-5 mb-1 text-stone-400" />
+                    <span className="text-[10px] font-bold">+ Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => videoInputRef.current?.click()}
+                    className="flex h-28 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 bg-purple-50/50 text-purple-600 hover:border-purple-600 hover:text-purple-800 transition"
+                    title="Add video"
+                  >
+                    <Video className="h-5 w-5 mb-1 text-purple-500" />
+                    <span className="text-[10px] font-bold">+ Video</span>
+                  </button>
+                </>
+              )}
+
               {totalImages === 0 && (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 text-xs text-stone-500 hover:border-emerald-600 hover:text-emerald-700 bg-white transition"
-                >
-                  <Video className="mb-1.5 h-6 w-6 text-stone-400" />
-                  <span className="font-semibold">Click to select photos or videos for {variant.colorName || "this variant"}</span>
-                  <span className="text-[11px] text-stone-400 mt-0.5">Photos (JPG, PNG, WebP) & Videos (MP4, WebM, MOV) up to 100MB</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  <div
+                    onClick={() => photoInputRef.current?.click()}
+                    className="flex h-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 p-4 text-xs text-stone-600 hover:border-emerald-600 hover:bg-emerald-50/40 hover:text-emerald-700 bg-white transition group"
+                  >
+                    <ImagePlus className="mb-1.5 h-6 w-6 text-stone-400 group-hover:text-emerald-600 transition" />
+                    <span className="font-bold text-ink-900 group-hover:text-emerald-700">+ Add Photos (Images)</span>
+                    <span className="text-[11px] text-stone-400 mt-0.5">JPG, PNG, WebP (Multiple allowed)</span>
+                  </div>
+
+                  <div
+                    onClick={() => videoInputRef.current?.click()}
+                    className="flex h-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 p-4 text-xs text-purple-700 hover:border-purple-600 hover:bg-purple-50/50 bg-white transition group"
+                  >
+                    <Video className="mb-1.5 h-6 w-6 text-purple-500 group-hover:text-purple-700 group-hover:scale-110 transition" />
+                    <span className="font-bold text-purple-900 group-hover:text-purple-700">+ Add Product Video</span>
+                    <span className="text-[11px] text-purple-500 mt-0.5">MP4, WebM, MOV (Up to 100MB)</span>
+                  </div>
                 </div>
               )}
             </div>
