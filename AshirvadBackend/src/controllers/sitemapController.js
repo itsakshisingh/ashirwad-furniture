@@ -52,7 +52,6 @@ const getSitemapXml = async (req, res) => {
       { url: `${baseUrl}/`, priority: "1.0", changefreq: "daily", type: "Core Page", title: "Home" },
       { url: `${baseUrl}/products`, priority: "0.9", changefreq: "daily", type: "Core Page", title: "All Products & Catalog" },
       { url: `${baseUrl}/catalog/categories`, priority: "0.8", changefreq: "weekly", type: "Core Page", title: "Catalog Categories" },
-      { url: `${baseUrl}/blogs`, priority: "0.8", changefreq: "daily", type: "Core Page", title: "Furniture Blog" },
       { url: `${baseUrl}/about-ashirwad`, priority: "0.8", changefreq: "monthly", type: "Core Page", title: "About Ashirwad Furnex" },
       { url: `${baseUrl}/projects`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Projects" },
       { url: `${baseUrl}/our-happy-customers`, priority: "0.7", changefreq: "weekly", type: "Core Page", title: "Our Clients" },
@@ -156,12 +155,24 @@ const getSitemapXml = async (req, res) => {
       xml += `  </url>\n`;
     }
 
-    // --- Blogs: /blogs/:slug ---
+    // --- Blogs: Main Listing Page & Individual Posts ---
+    // 1. All Blogs Listing Page (Jahan par saare blogs ek saath dikhte hain)
+    xml += `  <url>\n`;
+    xml += `    <loc>${escapeXml(`${baseUrl}/blogs`)}</loc>\n`;
+    xml += `    <lastmod>${now}</lastmod>\n`;
+    xml += `    <changefreq>daily</changefreq>\n`;
+    xml += `    <priority>0.9</priority>\n`;
+    xml += `    <furnex:type>Blog</furnex:type>\n`;
+    xml += `    <furnex:name>All Blogs (Furniture Blog Listing)</furnex:name>\n`;
+    xml += `  </url>\n`;
+
+    // 2. Individual Published Blog Pages
     for (const b of blogs) {
-      if (!b.slug) continue;
+      const identifier = (b.slug || String(b._id || "")).trim();
+      if (!identifier) continue;
       const lastmod = formatDate(b.updatedAt || b.createdAt);
       xml += `  <url>\n`;
-      xml += `    <loc>${escapeXml(`${baseUrl}/blogs/${b.slug}`)}</loc>\n`;
+      xml += `    <loc>${escapeXml(`${baseUrl}/blogs/${identifier}`)}</loc>\n`;
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
