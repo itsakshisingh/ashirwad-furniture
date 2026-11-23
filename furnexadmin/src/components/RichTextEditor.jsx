@@ -4,10 +4,6 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Heading,
-  Heading1,
-  Heading2,
-  Heading3,
   List,
   ListOrdered,
   AlignLeft,
@@ -22,7 +18,6 @@ import {
   Code,
   Eye,
   RemoveFormatting,
-  Type,
 } from "lucide-react";
 
 /**
@@ -97,7 +92,6 @@ function cleanPastedHtml(htmlString) {
 
   Array.from(doc.body.childNodes).forEach(sanitizeNode);
 
-  // Clean empty paragraphs or wrap loose text
   return doc.body.innerHTML.trim();
 }
 
@@ -139,7 +133,7 @@ export default function RichTextEditor({
   value = "",
   onChange,
   placeholder = "Write or paste your blog content here (headings, paragraphs, lists, bold text will stay formatted)...",
-  minHeight = "280px",
+  minHeight = "320px",
 }) {
   const editorRef = useRef(null);
   const [viewMode, setViewMode] = useState("visual"); // "visual" | "html"
@@ -197,7 +191,7 @@ export default function RichTextEditor({
 
   const handleInsertLink = () => {
     if (viewMode !== "visual") return;
-    const url = window.prompt("Enter the URL link (e.g. https://ashirwadfurnex.com):");
+    const url = window.prompt("Enter URL link (e.g. https://ashirwadfurnex.com):");
     if (url) {
       executeCmd("createLink", url);
     }
@@ -223,7 +217,7 @@ export default function RichTextEditor({
     }
 
     if (contentToInsert) {
-      // Insert cleaned HTML into the current selection
+      // Insert cleaned HTML into current selection
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
@@ -253,7 +247,8 @@ export default function RichTextEditor({
   const toggleViewMode = (mode) => {
     if (mode === viewMode) return;
     if (mode === "html") {
-      setHtmlSource(editorRef.current ? editorRef.current.innerHTML : value);
+      const currentHtml = editorRef.current ? editorRef.current.innerHTML : value || "";
+      setHtmlSource(currentHtml);
       setViewMode("html");
     } else {
       setViewMode("visual");
@@ -274,43 +269,91 @@ export default function RichTextEditor({
 
   return (
     <div className="overflow-hidden rounded-xl border border-stone-300 bg-white shadow-sm focus-within:border-emerald-600 focus-within:ring-1 focus-within:ring-emerald-600 transition">
-      {/* Editor Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-stone-200 bg-stone-50 px-2.5 py-2 text-stone-700">
-        <div className="flex flex-wrap items-center gap-1">
+      {/* Top Header Bar with Mode Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-stone-100/90 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+            {viewMode === "visual" ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Visual Editor (WYSIWYG)
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                HTML Source Code Editor
+              </>
+            )}
+          </span>
+          <span className="text-[11px] text-stone-500 hidden sm:inline">
+            {viewMode === "visual"
+              ? "• Text visual format me dekhein aur edit karein"
+              : "• Raw HTML tags direct view & edit karein"}
+          </span>
+        </div>
+
+        {/* View Mode Toggle Buttons */}
+        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-stone-300 shadow-sm">
+          <button
+            type="button"
+            onClick={() => toggleViewMode("visual")}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition ${
+              viewMode === "visual"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+            title="Switch to Visual WYSIWYG Mode"
+          >
+            <Eye className="h-3.5 w-3.5" /> Visual
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleViewMode("html")}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition ${
+              viewMode === "html"
+                ? "bg-stone-800 text-white shadow-sm"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            }`}
+            title="Switch to Raw HTML Code View"
+          >
+            <Code className="h-3.5 w-3.5" /> HTML Code
+          </button>
+        </div>
+      </div>
+
+      {/* Editor Formatting Toolbar (Active in Visual Mode) */}
+      {viewMode === "visual" ? (
+        <div className="flex flex-wrap items-center gap-1 border-b border-stone-200 bg-stone-50 px-2.5 py-2 text-stone-700">
           {/* Headings & Blocks Dropdown */}
-          <div className="relative">
-            <select
-              aria-label="Format Block"
-              disabled={viewMode !== "visual"}
-              onChange={(e) => {
-                handleFormatBlock(e.target.value);
-                e.target.value = "";
-              }}
-              defaultValue=""
-              className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 cursor-pointer shadow-sm outline-none focus:border-emerald-500"
-            >
-              <option value="" disabled>
-                Heading / Style
-              </option>
-              <option value="p">¶ Paragraph (Normal)</option>
-              <option value="h1">H1 - Main Heading (Large)</option>
-              <option value="h2">H2 - Section Heading</option>
-              <option value="h3">H3 - Sub Heading</option>
-              <option value="h4">H4 - Small Heading</option>
-              <option value="blockquote">❝ Quote Block</option>
-            </select>
-          </div>
+          <select
+            aria-label="Format Block"
+            onChange={(e) => {
+              handleFormatBlock(e.target.value);
+              e.target.value = "";
+            }}
+            defaultValue=""
+            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer shadow-sm outline-none focus:border-emerald-500"
+          >
+            <option value="" disabled>
+              Heading / Style
+            </option>
+            <option value="p">¶ Paragraph (Normal Text)</option>
+            <option value="h1">H1 - Main Heading</option>
+            <option value="h2">H2 - Section Heading</option>
+            <option value="h3">H3 - Sub Heading</option>
+            <option value="h4">H4 - Small Heading</option>
+            <option value="blockquote">❝ Quote Block</option>
+          </select>
 
           {/* Font Size Dropdown */}
           <select
             aria-label="Font Size"
-            disabled={viewMode !== "visual"}
             onChange={(e) => {
               handleFontSize(e.target.value);
               e.target.value = "";
             }}
             defaultValue=""
-            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 cursor-pointer shadow-sm outline-none focus:border-emerald-500"
+            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer shadow-sm outline-none focus:border-emerald-500"
           >
             <option value="" disabled>
               Font Size
@@ -327,37 +370,33 @@ export default function RichTextEditor({
           {/* Text Styles */}
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("bold")}
             title="Bold (Ctrl+B)"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Bold className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("italic")}
             title="Italic (Ctrl+I)"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Italic className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("underline")}
             title="Underline (Ctrl+U)"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Underline className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("strikeThrough")}
             title="Strikethrough"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Strikethrough className="h-4 w-4" />
           </button>
@@ -367,19 +406,17 @@ export default function RichTextEditor({
           {/* Lists */}
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("insertUnorderedList")}
             title="Bullet List"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <List className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("insertOrderedList")}
             title="Numbered List"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <ListOrdered className="h-4 w-4" />
           </button>
@@ -389,30 +426,35 @@ export default function RichTextEditor({
           {/* Alignments */}
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("justifyLeft")}
             title="Align Left"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <AlignLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("justifyCenter")}
             title="Align Center"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <AlignCenter className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("justifyRight")}
             title="Align Right"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <AlignRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => executeCmd("justifyFull")}
+            title="Justify Text"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
+          >
+            <AlignJustify className="h-4 w-4" />
           </button>
 
           <div className="h-4 w-[1px] bg-stone-300 mx-1" />
@@ -420,37 +462,33 @@ export default function RichTextEditor({
           {/* Link & Quote */}
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={handleInsertLink}
             title="Insert Link"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Link2 className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("unlink")}
             title="Remove Link"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Unlink className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => handleFormatBlock("blockquote")}
             title="Quote Block"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Quote className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("removeFormat")}
             title="Clear Formatting"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <RemoveFormatting className="h-4 w-4" />
           </button>
@@ -460,56 +498,35 @@ export default function RichTextEditor({
           {/* Undo / Redo */}
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("undo")}
             title="Undo"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Undo2 className="h-4 w-4" />
           </button>
           <button
             type="button"
-            disabled={viewMode !== "visual"}
             onClick={() => executeCmd("redo")}
             title="Redo"
-            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 disabled:opacity-50 transition"
+            className="rounded p-1.5 hover:bg-stone-200 text-stone-700 transition"
           >
             <Redo2 className="h-4 w-4" />
           </button>
         </div>
-
-        {/* View Mode Toggle: Visual vs HTML Code */}
-        <div className="flex items-center gap-1 bg-stone-200/80 p-0.5 rounded-lg border border-stone-300">
-          <button
-            type="button"
-            onClick={() => toggleViewMode("visual")}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-md transition ${
-              viewMode === "visual"
-                ? "bg-white text-emerald-800 shadow-sm"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-            title="WYSIWYG Visual Formatted Mode"
-          >
-            <Eye className="h-3.5 w-3.5" /> Visual
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleViewMode("html")}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-md transition ${
-              viewMode === "html"
-                ? "bg-white text-emerald-800 shadow-sm"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-            title="Raw HTML Code View"
-          >
-            <Code className="h-3.5 w-3.5" /> HTML Code
-          </button>
+      ) : (
+        <div className="flex items-center justify-between border-b border-stone-200 bg-stone-800 px-3 py-1.5 text-xs text-stone-300">
+          <span className="font-mono text-emerald-400">
+            &lt;&gt; HTML Source Code (Directly Editable)
+          </span>
+          <span className="text-[11px] text-stone-400">
+            Changes auto-sync to Visual Editor
+          </span>
         </div>
-      </div>
+      )}
 
       {/* Editor Content Area */}
       {viewMode === "visual" ? (
-        <div className="relative">
+        <div className="relative bg-white">
           <div
             ref={editorRef}
             contentEditable
@@ -517,31 +534,36 @@ export default function RichTextEditor({
             onPaste={handlePaste}
             style={{ minHeight }}
             data-placeholder={placeholder}
-            className="rich-editor-content w-full p-4 text-stone-900 outline-none leading-relaxed overflow-y-auto"
+            className="rich-editor-content w-full p-5 text-stone-900 outline-none leading-relaxed overflow-y-auto"
           />
         </div>
       ) : (
+        /* High-contrast, crystal-clear code editor */
         <textarea
-          rows={12}
+          rows={14}
           value={htmlSource}
           onChange={handleHtmlSourceChange}
           placeholder="<p>HTML content here...</p>"
           style={{ minHeight }}
-          className="w-full p-4 font-mono text-xs leading-relaxed text-stone-800 bg-stone-900 text-stone-100 outline-none resize-y"
+          spellCheck={false}
+          className="w-full p-4 font-mono text-sm leading-relaxed bg-slate-900 text-emerald-300 placeholder-slate-500 selection:bg-emerald-600 selection:text-white outline-none resize-y border-0"
         />
       )}
 
       {/* Helper Footer */}
-      <div className="border-t border-stone-200 bg-stone-50/70 px-3 py-1.5 flex flex-wrap items-center justify-between text-[11px] text-stone-500">
-        <span>
-          💡 <strong>Tip:</strong> Word, Google Docs ya website se text copy-paste karein — headings, bold, aur paragraphs automatic format honge.
+      <div className="border-t border-stone-200 bg-stone-50/80 px-3.5 py-2 flex flex-wrap items-center justify-between text-[11px] text-stone-600">
+        <span className="flex items-center gap-1.5">
+          <span>💡</span>
+          <span>
+            <strong>Tip:</strong> Word, Google Docs ya website se copy-paste karein — headings, bold text, aur paragraphs automatic format honge.
+          </span>
         </span>
-        <span className="font-mono">
-          {viewMode === "visual" ? "Visual WYSIWYG Mode" : "Raw HTML Code Mode"}
+        <span className="font-semibold text-stone-500">
+          {viewMode === "visual" ? "Mode: Visual (WYSIWYG)" : "Mode: HTML Code"}
         </span>
       </div>
 
-      {/* Inline styles for the rich content editor */}
+      {/* Inline styles for the rich visual content editor */}
       <style>{`
         .rich-editor-content:empty:before {
           content: attr(data-placeholder);
