@@ -10,14 +10,6 @@ import {
   Trash2,
   AlertTriangle,
   Upload,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Quote,
-  Link2,
-  Undo2,
-  Redo2,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -25,6 +17,7 @@ import {
 } from "lucide-react";
 import { blogsApi } from "../api/services";
 import { imgUrl } from "../utils/helpers";
+import RichTextEditor from "../components/RichTextEditor";
 
 export default function BlogForm() {
   const { id } = useParams();
@@ -152,34 +145,6 @@ export default function BlogForm() {
       ...prev,
       faqs: prev.faqs.filter((_, i) => i !== index),
     }));
-  };
-
-  // Rich Text Simple Action (Inserts HTML tags around selected text)
-  const insertHtmlTag = (tag, openTag, closeTag) => {
-    const textarea = document.getElementById("blog-description-input");
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selected = text.substring(start, end);
-
-    let replacement = "";
-    if (tag === "p") replacement = `<p>${selected || "Paragraph text"}</p>`;
-    else if (tag === "b") replacement = `<b>${selected || "bold text"}</b>`;
-    else if (tag === "i") replacement = `<i>${selected || "italic text"}</i>`;
-    else if (tag === "ul") replacement = `<ul>\n  <li>${selected || "List item"}</li>\n</ul>`;
-    else if (tag === "ol") replacement = `<ol>\n  <li>${selected || "List item"}</li>\n</ol>`;
-    else if (tag === "blockquote") replacement = `<blockquote>${selected || "Quote"}</blockquote>`;
-    else if (tag === "a") replacement = `<a href="https://example.com">${selected || "Link text"}</a>`;
-    else if (openTag && closeTag) replacement = `${openTag}${selected}${closeTag}`;
-
-    const newText = text.substring(0, start) + replacement + text.substring(end);
-    setFormData((prev) => ({ ...prev, description: newText }));
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + replacement.length, start + replacement.length);
-    }, 10);
   };
 
   // SEO Suggestions
@@ -445,113 +410,22 @@ export default function BlogForm() {
               </div>
             </div>
 
-            {/* Description (Rich Text Editor Toolbar + Textarea) */}
+            {/* Description (Visual WYSIWYG Rich Text Editor) */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-800">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <div className="overflow-hidden rounded-lg border border-gray-300 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
-                {/* Editor Toolbar */}
-                <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-2 py-1.5 text-gray-700">
-                  <select
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 outline-none hover:bg-gray-50"
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) insertHtmlTag(val);
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="">Paragraph</option>
-                    <option value="h2">Heading 2</option>
-                    <option value="h3">Heading 3</option>
-                    <option value="h4">Heading 4</option>
-                    <option value="p">Paragraph</option>
-                  </select>
-
-                  <div className="h-4 w-[1px] bg-gray-300 mx-1" />
-
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("b")}
-                    title="Bold"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Bold className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("i")}
-                    title="Italic"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Italic className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("a")}
-                    title="Insert Link"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Link2 className="h-4 w-4" />
-                  </button>
-
-                  <div className="h-4 w-[1px] bg-gray-300 mx-1" />
-
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("ul")}
-                    title="Bullet List"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("ol")}
-                    title="Numbered List"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <ListOrdered className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertHtmlTag("blockquote")}
-                    title="Quote"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Quote className="h-4 w-4" />
-                  </button>
-
-                  <div className="h-4 w-[1px] bg-gray-300 mx-1" />
-
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand("undo")}
-                    title="Undo"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand("redo")}
-                    title="Redo"
-                    className="rounded p-1.5 hover:bg-gray-200 text-gray-700"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <textarea
-                  id="blog-description-input"
-                  required
-                  rows={9}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="<h2>Introduction</h2><p>Write your blog content here in HTML or plain text...</p>"
-                  className="w-full p-3 font-mono text-sm leading-relaxed text-gray-800 outline-none"
-                />
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                <label className="block text-sm font-semibold text-gray-800">
+                  Description / Blog Content <span className="text-red-500">*</span>
+                </label>
+                <span className="text-xs text-stone-500 font-medium">
+                  Word / Docs se direct formatted copy-paste supported
+                </span>
               </div>
+              <RichTextEditor
+                value={formData.description}
+                onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+                placeholder="Write or paste your blog content here (headings, paragraphs, lists, bold text will stay formatted)..."
+                minHeight="320px"
+              />
             </div>
 
             {/* Author */}
