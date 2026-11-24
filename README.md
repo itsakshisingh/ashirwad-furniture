@@ -4,7 +4,7 @@
 
 The website focuses on providing a professional digital experience for customers, institutions, offices, and bulk furniture buyers.
 
-🌐 **Live Website:** https://ashirwadfurnex.com/
+🌐 **Live Website:** https://www.ashirwadfurnex.com/
 
 ---
 
@@ -101,7 +101,7 @@ The platform helps customers explore furniture solutions for schools, offices, c
 | Industry | Furniture Manufacturing |
 | Website Type | Business & Product Catalog Platform |
 | Product Focus | School, Office & Institutional Furniture |
-| Live Website | https://ashirwadfurnex.com/ |
+| Live Website | https://www.ashirwadfurnex.com/ |
 
 ---
 
@@ -138,7 +138,7 @@ The platform is designed with a focus on:
 
 Explore the complete website:
 
-**https://ashirwadfurnex.com/**
+**https://www.ashirwadfurnex.com/**
 
 ---
 

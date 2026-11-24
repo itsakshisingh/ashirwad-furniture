@@ -191,7 +191,7 @@ export default function RichTextEditor({
 
   const handleInsertLink = () => {
     if (viewMode !== "visual") return;
-    const url = window.prompt("Enter URL link (e.g. https://ashirwadfurnex.com):");
+    const url = window.prompt("Enter URL link (e.g. https://www.ashirwadfurnex.com):");
     if (url) {
       executeCmd("createLink", url);
     }

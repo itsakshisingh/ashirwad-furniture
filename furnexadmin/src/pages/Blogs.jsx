@@ -285,7 +285,7 @@ export default function Blogs() {
                       <div className="flex items-center justify-end gap-2">
                         {blog.slug && (
                           <a
-                            href={`https://ashirwadfurnex.com/blogs/${blog.slug}`}
+                            href={`https://www.ashirwadfurnex.com/blogs/${blog.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-lg p-1.5 text-ink-400 hover:bg-sand-100 hover:text-ink-700 transition"

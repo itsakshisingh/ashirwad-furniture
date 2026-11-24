@@ -103,7 +103,7 @@ function ProductViewModal({ product, onClose }) {
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <a
-            href={`https://ashirwadfurnex.com/products/${product.slug || product._id}`}
+            href={`https://www.ashirwadfurnex.com/products/${product.slug || product._id}`}
             target="_blank"
             rel="noreferrer"
             className="btn-ghost !text-xs inline-flex items-center gap-1.5 text-stone-600 hover:text-ink-900"

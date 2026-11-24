@@ -36,16 +36,16 @@ const formatDate = (date) => {
  * GET /sitemap.xml
  *
  * URL Structure:
- *  - Product Detail Page: https://ashirwadfurnex.com/products/:productId
+ *  - Product Detail Page: https://www.ashirwadfurnex.com/products/:productId
  *    (Directly opens the Product Details view with image, specs, and Get Best Quote button)
- *  - Categories Listing:  https://ashirwadfurnex.com/products?categoryId=:catId
- *  - Subcategories:       https://ashirwadfurnex.com/products?categoryId=:catId&subCategoryId=:subCatId
- *  - Blogs:               https://ashirwadfurnex.com/blogs/:slug
+ *  - Categories Listing:  https://www.ashirwadfurnex.com/products?categoryId=:catId
+ *  - Subcategories:       https://www.ashirwadfurnex.com/products?categoryId=:catId&subCategoryId=:subCatId
+ *  - Blogs:               https://www.ashirwadfurnex.com/blogs/:slug
  *  - Core Static Pages:   /, /products, /catalog/categories, /blogs, /about-ashirwad, etc.
  */
 const getSitemapXml = async (req, res) => {
   try {
-    const baseUrl = (process.env.SITE_URL || "https://ashirwadfurnex.com").replace(/\/$/, "");
+    const baseUrl = (process.env.SITE_URL || "https://www.ashirwadfurnex.com").replace(/\/$/, "");
 
     // 1. Static Core Pages (matches Expo Router screen paths)
     const staticPages = [
@@ -94,7 +94,7 @@ const getSitemapXml = async (req, res) => {
     xml += `<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
     xml += `        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
-    xml += `        xmlns:furnex="https://ashirwadfurnex.com/schema/sitemap-ext"\n`;
+    xml += `        xmlns:furnex="https://www.ashirwadfurnex.com/schema/sitemap-ext"\n`;
     xml += `        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9\n`;
     xml += `        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n`;
 

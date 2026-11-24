@@ -56,7 +56,7 @@ const publishDueScheduledBlogs = async () => {
  */
 const generateBlogSchema = (blog) => {
   if (!blog) return null;
-  const siteUrl = "https://ashirwadfurnex.com";
+  const siteUrl = "https://www.ashirwadfurnex.com";
   const postSlug = blog.slug || "";
   const postUrl = `${siteUrl}/blogs/${postSlug}`;
   const coverUrl =
@@ -222,11 +222,16 @@ const getBlogBySlug = async (req, res) => {
 
     const blogObj = blog.toObject ? blog.toObject() : blog;
     const schema = generateBlogSchema(blogObj);
+    const siteUrl = "https://www.ashirwadfurnex.com";
+    const canonicalUrl = `${siteUrl}/blogs/${blogObj.slug}`;
+    const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
 
     res.status(200).json({
       success: true,
       data: {
         ...blogObj,
+        canonicalUrl,
+        canonicalTag,
         schema,
         jsonLd: schema,
       },
@@ -358,11 +363,16 @@ const getBlogById = async (req, res) => {
 
     const blogObj = blog.toObject ? blog.toObject() : blog;
     const schema = generateBlogSchema(blogObj);
+    const siteUrl = "https://www.ashirwadfurnex.com";
+    const canonicalUrl = `${siteUrl}/blogs/${blogObj.slug}`;
+    const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
 
     res.status(200).json({
       success: true,
       data: {
         ...blogObj,
+        canonicalUrl,
+        canonicalTag,
         schema,
         jsonLd: schema,
       },

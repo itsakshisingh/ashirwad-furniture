@@ -3,7 +3,7 @@ const getSitemapXsl = (req, res) => {
 <xsl:stylesheet version="2.0"
                 xmlns:html="http://www.w3.org/TR/REC-html40"
                 xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9"
-                xmlns:furnex="https://ashirwadfurnex.com/schema/sitemap-ext"
+                xmlns:furnex="https://www.ashirwadfurnex.com/schema/sitemap-ext"
                 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output method="html" version="1.0" encoding="UTF-8" indent="yes"/>
   <xsl:template match="/">
@@ -258,7 +258,7 @@ const getSitemapXsl = (req, res) => {
             </div>
             <div class="domain-badge">
               <span>🏠 Main Domain:</span>
-              <strong style="color: #0284c7;">ashirwadfurnex.com</strong>
+              <strong style="color: #0284c7;">www.ashirwadfurnex.com</strong>
             </div>
           </div>
 

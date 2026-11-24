@@ -16,6 +16,7 @@ import {
   Sparkles,
   Calendar,
   Clock,
+  Link2,
 } from "lucide-react";
 import { blogsApi } from "../api/services";
 import { imgUrl } from "../utils/helpers";
@@ -29,6 +30,7 @@ export default function BlogForm() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [copied, setCopied] = useState(false);
+  const [copiedCanonical, setCopiedCanonical] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [existingCategories, setExistingCategories] = useState([]);
 
@@ -163,7 +165,7 @@ export default function BlogForm() {
   }, [formData, imagePreview]);
 
   // Schema.org JSON-LD Generation
-  const siteUrl = "https://ashirwadfurnex.com";
+  const siteUrl = "https://www.ashirwadfurnex.com";
   const currentIso = new Date().toISOString();
 
   const jsonLdData = useMemo(() => {
@@ -669,6 +671,34 @@ export default function BlogForm() {
                       </ul>
                     </div>
                   )}
+
+                  {/* Canonical URL & Tag Box */}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                    <div className="flex items-center justify-between text-slate-700 font-semibold mb-1.5">
+                      <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                        <Link2 className="h-3.5 w-3.5 text-indigo-600" /> Canonical Tag (SEO):
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const tag = `<link rel="canonical" href="${siteUrl}/blogs/${formData.slug.trim() || "post-preview"}" />`;
+                          navigator.clipboard.writeText(tag);
+                          setCopiedCanonical(true);
+                          setTimeout(() => setCopiedCanonical(false), 2000);
+                        }}
+                        className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-[11px] font-sans font-medium text-slate-700 shadow-xs border border-slate-300 hover:bg-slate-100 transition cursor-pointer"
+                      >
+                        {copiedCanonical ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        {copiedCanonical ? "Copied Tag!" : "Copy Canonical Tag"}
+                      </button>
+                    </div>
+                    <code className="block bg-slate-900 text-emerald-300 p-2 rounded text-[11px] font-mono break-all select-all leading-relaxed">
+                      {`<link rel="canonical" href="${siteUrl}/blogs/${formData.slug.trim() || "post-preview"}" />`}
+                    </code>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Standard www Canonical format: <code>https://www.ashirwadfurnex.com/...</code>
+                    </p>
+                  </div>
 
                   {/* Schema Code Box Header */}
                   <div className="flex items-center justify-between rounded-t-lg bg-gray-100 px-3 py-2 text-xs font-mono text-gray-600 border border-b-0 border-gray-300">
