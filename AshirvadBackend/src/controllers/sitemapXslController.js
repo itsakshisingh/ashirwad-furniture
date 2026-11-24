@@ -421,6 +421,7 @@ const getSitemapXsl = (req, res) => {
 
   res.header("Content-Type", "text/xsl; charset=utf-8");
   res.header("Cache-Control", "public, max-age=86400");
+  res.header("Access-Control-Allow-Origin", "*");
   return res.status(200).send(xsl);
 };
 

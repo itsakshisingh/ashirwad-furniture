@@ -193,6 +193,7 @@ const getSitemapXml = async (req, res) => {
 
     res.header("Content-Type", "application/xml; charset=utf-8");
     res.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
+    res.header("Access-Control-Allow-Origin", "*");
     return res.status(200).send(xml);
   } catch (error) {
     console.error("Error generating sitemap:", error);

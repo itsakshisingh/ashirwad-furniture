@@ -55,6 +55,16 @@ app.use("/product-images", express.static(path.join(__dirname, "../uploads/produ
 app.get("/sitemap.xml", getSitemapXml);
 app.get("/sitemap.xsl", getSitemapXsl);
 
+// Robots.txt pointing to live sitemap
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain");
+  res.send(`User-agent: *
+Allow: /
+
+Sitemap: https://www.ashirwadfurnex.com/sitemap.xml
+`);
+});
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
