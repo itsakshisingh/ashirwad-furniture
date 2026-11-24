@@ -163,9 +163,7 @@ export default function BlogForm() {
   }, [formData, imagePreview]);
 
   // Schema.org JSON-LD Generation
-  const siteUrl = window.location.origin.includes("localhost")
-    ? "https://bhoomitechzone.in"
-    : window.location.origin;
+  const siteUrl = "https://ashirwadfurnex.com";
   const currentIso = new Date().toISOString();
 
   const jsonLdData = useMemo(() => {

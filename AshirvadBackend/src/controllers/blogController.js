@@ -52,6 +52,85 @@ const publishDueScheduledBlogs = async () => {
 };
 
 /**
+ * Generate Google-compliant Schema.org JSON-LD structure for a blog post
+ */
+const generateBlogSchema = (blog) => {
+  if (!blog) return null;
+  const siteUrl = "https://ashirwadfurnex.com";
+  const postSlug = blog.slug || "";
+  const postUrl = `${siteUrl}/blogs/${postSlug}`;
+  const coverUrl =
+    blog.featuredImage?.url ||
+    (typeof blog.featuredImage === "string" ? blog.featuredImage : `${siteUrl}/images/default-blog.png`);
+
+  const publishedDate = blog.publishedAt
+    ? new Date(blog.publishedAt).toISOString()
+    : blog.createdAt
+    ? new Date(blog.createdAt).toISOString()
+    : new Date().toISOString();
+
+  const modifiedDate = blog.updatedAt
+    ? new Date(blog.updatedAt).toISOString()
+    : publishedDate;
+
+  const schemaGraph = [
+    {
+      "@type": "BlogPosting",
+      "@id": `${postUrl}#article`,
+      isPartOf: {
+        "@type": "WebPage",
+        "@id": postUrl,
+      },
+      headline: blog.title || "",
+      description: blog.metaDescription || blog.title || "",
+      url: postUrl,
+      image: coverUrl,
+      datePublished: publishedDate,
+      dateModified: modifiedDate,
+      author: {
+        "@type": "Person",
+        name: blog.author || "Ashirwad Furnex Team",
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Ashirwad Furnex",
+        url: siteUrl,
+        logo: {
+          "@type": "ImageObject",
+          url: `${siteUrl}/logo.png`,
+        },
+      },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": postUrl,
+      },
+    },
+  ];
+
+  if (Array.isArray(blog.faqs) && blog.faqs.length > 0 && blog.faqs[0].question) {
+    schemaGraph.push({
+      "@type": "FAQPage",
+      "@id": `${postUrl}#faq`,
+      mainEntity: blog.faqs
+        .filter((faq) => faq.question && faq.answer)
+        .map((faq) => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: faq.answer,
+          },
+        })),
+    });
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": schemaGraph,
+  };
+};
+
+/**
  * Public: Get published blogs (with pagination, category, isFeatured, search)
  * GET /api/v1/blogs
  */
@@ -141,9 +220,16 @@ const getBlogBySlug = async (req, res) => {
       });
     }
 
+    const blogObj = blog.toObject ? blog.toObject() : blog;
+    const schema = generateBlogSchema(blogObj);
+
     res.status(200).json({
       success: true,
-      data: blog,
+      data: {
+        ...blogObj,
+        schema,
+        jsonLd: schema,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -270,9 +356,16 @@ const getBlogById = async (req, res) => {
       }
     }
 
+    const blogObj = blog.toObject ? blog.toObject() : blog;
+    const schema = generateBlogSchema(blogObj);
+
     res.status(200).json({
       success: true,
-      data: blog,
+      data: {
+        ...blogObj,
+        schema,
+        jsonLd: schema,
+      },
     });
   } catch (error) {
     res.status(500).json({
