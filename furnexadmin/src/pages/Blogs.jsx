@@ -144,6 +144,7 @@ export default function Blogs() {
           >
             <option value="all">All Statuses</option>
             <option value="published">Published</option>
+            <option value="scheduled">Scheduled</option>
             <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>
@@ -241,21 +242,36 @@ export default function Blogs() {
                     </td>
 
                     <td className="px-4 py-4">
-                      <select
-                        value={blog.status}
-                        onChange={(e) => handleStatusChange(blog._id, e.target.value)}
-                        className={`rounded-lg border px-2 py-1 text-xs font-semibold uppercase tracking-wider focus:outline-none ${
-                          blog.status === "published"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : blog.status === "draft"
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-gray-200 bg-gray-50 text-gray-700"
-                        }`}
-                      >
-                        <option value="published">Published</option>
-                        <option value="draft">Draft</option>
-                        <option value="archived">Archived</option>
-                      </select>
+                      <div className="flex flex-col gap-1">
+                        <select
+                          value={blog.status}
+                          onChange={(e) => handleStatusChange(blog._id, e.target.value)}
+                          className={`rounded-lg border px-2 py-1 text-xs font-semibold uppercase tracking-wider focus:outline-none ${
+                            blog.status === "published"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : blog.status === "scheduled"
+                              ? "border-purple-200 bg-purple-50 text-purple-700 font-bold"
+                              : blog.status === "draft"
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-gray-200 bg-gray-50 text-gray-700"
+                          }`}
+                        >
+                          <option value="published">Published</option>
+                          <option value="scheduled">Scheduled</option>
+                          <option value="draft">Draft</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                        {blog.status === "scheduled" && blog.scheduledAt && (
+                          <span className="text-[10px] text-purple-700 font-semibold" title={new Date(blog.scheduledAt).toLocaleString()}>
+                            ⏰ {new Date(blog.scheduledAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-4 py-4 text-center text-xs font-medium text-ink-600">

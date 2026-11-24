@@ -29,16 +29,46 @@ const parseField = (value, fallback = []) => {
 };
 
 /**
+ * Auto-promote scheduled blogs whose scheduledAt time has arrived
+ */
+const publishDueScheduledBlogs = async () => {
+  try {
+    const now = new Date();
+    await Blog.updateMany(
+      {
+        status: "scheduled",
+        scheduledAt: { $lte: now },
+      },
+      {
+        $set: {
+          status: "published",
+          publishedAt: now,
+        },
+      }
+    );
+  } catch (err) {
+    console.error("Auto publish scheduled blogs error:", err.message);
+  }
+};
+
+/**
  * Public: Get published blogs (with pagination, category, isFeatured, search)
  * GET /api/v1/blogs
  */
 const getBlogs = async (req, res) => {
   try {
+    await publishDueScheduledBlogs();
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
-    const filter = { status: "published" };
+    const filter = {
+      $or: [
+        { status: "published" },
+        { status: "scheduled", scheduledAt: { $lte: new Date() } },
+      ],
+    };
 
     if (req.query.category && req.query.category !== "all") {
       filter.category = { $regex: new RegExp(`^${req.query.category.trim()}$`, "i") };
@@ -89,9 +119,17 @@ const getBlogs = async (req, res) => {
  */
 const getBlogBySlug = async (req, res) => {
   try {
+    await publishDueScheduledBlogs();
+
     const { slug } = req.params;
     const blog = await Blog.findOneAndUpdate(
-      { slug: slug.toLowerCase().trim(), status: "published" },
+      {
+        slug: slug.toLowerCase().trim(),
+        $or: [
+          { status: "published" },
+          { status: "scheduled", scheduledAt: { $lte: new Date() } },
+        ],
+      },
       { $inc: { views: 1 } },
       { new: true }
     );
@@ -122,7 +160,13 @@ const getBlogBySlug = async (req, res) => {
  */
 const getBlogCategories = async (req, res) => {
   try {
-    const categories = await Blog.distinct("category", { status: "published" });
+    await publishDueScheduledBlogs();
+    const categories = await Blog.distinct("category", {
+      $or: [
+        { status: "published" },
+        { status: "scheduled", scheduledAt: { $lte: new Date() } },
+      ],
+    });
     res.status(200).json({
       success: true,
       count: categories.length,
@@ -143,6 +187,7 @@ const getBlogCategories = async (req, res) => {
  */
 const getAllBlogsAdmin = async (req, res) => {
   try {
+    await publishDueScheduledBlogs();
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -202,12 +247,27 @@ const getAllBlogsAdmin = async (req, res) => {
  */
 const getBlogById = async (req, res) => {
   try {
+    await publishDueScheduledBlogs();
     const blog = await Blog.findById(req.params.id);
     if (!blog) {
       return res.status(404).json({
         success: false,
         message: "Blog not found",
       });
+    }
+
+    // Verify publication visibility for public consumers (non-admin)
+    const isAdmin = req.user && req.user.role === "admin";
+    if (!isAdmin) {
+      const isVisible =
+        blog.status === "published" ||
+        (blog.status === "scheduled" && blog.scheduledAt && new Date(blog.scheduledAt) <= new Date());
+      if (!isVisible) {
+        return res.status(404).json({
+          success: false,
+          message: "Blog not found",
+        });
+      }
     }
 
     res.status(200).json({
@@ -240,6 +300,7 @@ const createBlog = async (req, res) => {
       keywords,
       isFeatured,
       status,
+      scheduledAt,
       featuredImage: bodyFeaturedImage,
       faqs,
     } = req.body;
@@ -276,6 +337,19 @@ const createBlog = async (req, res) => {
       featuredImage = String(bodyFeaturedImage).trim();
     }
 
+    // Determine status & schedule timestamps
+    const now = new Date();
+    const isScheduled = status === "scheduled";
+    const parsedSchedule = scheduledAt ? new Date(scheduledAt) : null;
+    const isPastSchedule = isScheduled && parsedSchedule && parsedSchedule <= now;
+
+    let finalStatus = "published";
+    if (status === "draft" || status === "archived") {
+      finalStatus = status;
+    } else if (isScheduled && !isPastSchedule) {
+      finalStatus = "scheduled";
+    }
+
     const blog = await Blog.create({
       title: title.trim(),
       slug,
@@ -286,7 +360,9 @@ const createBlog = async (req, res) => {
       author: author ? author.trim() : "Admin",
       keywords: parseField(keywords),
       isFeatured: isFeatured === true || isFeatured === "true",
-      status: ["draft", "published", "archived"].includes(status) ? status : "published",
+      status: finalStatus,
+      scheduledAt: isScheduled ? parsedSchedule : null,
+      publishedAt: finalStatus === "published" ? now : (isScheduled ? parsedSchedule : null),
       featuredImage,
       faqs: parseField(faqs),
     });
@@ -330,6 +406,7 @@ const updateBlog = async (req, res) => {
       keywords,
       isFeatured,
       status,
+      scheduledAt,
       featuredImage: bodyFeaturedImage,
       faqs,
     } = req.body;
@@ -353,8 +430,28 @@ const updateBlog = async (req, res) => {
       blog.isFeatured = isFeatured === true || isFeatured === "true";
     }
 
-    if (status !== undefined && ["draft", "published", "archived"].includes(status)) {
-      blog.status = status;
+    if (scheduledAt !== undefined) {
+      blog.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    }
+
+    if (status !== undefined && ["draft", "published", "scheduled", "archived"].includes(status)) {
+      const now = new Date();
+      if (status === "scheduled") {
+        const scheduleTime = scheduledAt ? new Date(scheduledAt) : blog.scheduledAt;
+        if (scheduleTime && scheduleTime <= now) {
+          blog.status = "published";
+          blog.publishedAt = now;
+        } else {
+          blog.status = "scheduled";
+          if (scheduledAt) blog.scheduledAt = new Date(scheduledAt);
+        }
+      } else if (status === "published") {
+        blog.status = "published";
+        blog.scheduledAt = null;
+        if (!blog.publishedAt) blog.publishedAt = now;
+      } else {
+        blog.status = status;
+      }
     }
 
     // Slug update with uniqueness check
@@ -406,17 +503,34 @@ const updateBlog = async (req, res) => {
  */
 const updateBlogStatus = async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!status || !["draft", "published", "archived"].includes(status)) {
+    const { status, scheduledAt } = req.body;
+    if (!status || !["draft", "published", "scheduled", "archived"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Valid status ('draft', 'published', 'archived') is required",
+        message: "Valid status ('draft', 'published', 'scheduled', 'archived') is required",
       });
+    }
+
+    const now = new Date();
+    const updateData = { status };
+    if (status === "scheduled") {
+      if (scheduledAt) {
+        const scheduleTime = new Date(scheduledAt);
+        if (scheduleTime <= now) {
+          updateData.status = "published";
+          updateData.publishedAt = now;
+        } else {
+          updateData.scheduledAt = scheduleTime;
+        }
+      }
+    } else if (status === "published") {
+      updateData.scheduledAt = null;
+      updateData.publishedAt = now;
     }
 
     const blog = await Blog.findByIdAndUpdate(
       req.params.id,
-      { status },
+      updateData,
       { new: true, runValidators: true }
     );
 

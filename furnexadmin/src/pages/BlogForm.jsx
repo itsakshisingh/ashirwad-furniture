@@ -14,6 +14,8 @@ import {
   ChevronUp,
   FileText,
   Sparkles,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { blogsApi } from "../api/services";
 import { imgUrl } from "../utils/helpers";
@@ -42,6 +44,7 @@ export default function BlogForm() {
     keywords: "",
     isFeatured: false,
     status: "published",
+    scheduledAt: "",
     featuredImage: null,
     faqs: [],
   });
@@ -80,6 +83,7 @@ export default function BlogForm() {
               keywords: Array.isArray(blog.keywords) ? blog.keywords.join(", ") : (blog.keywords || ""),
               isFeatured: Boolean(blog.isFeatured),
               status: blog.status || "published",
+              scheduledAt: blog.scheduledAt ? new Date(blog.scheduledAt).toISOString().slice(0, 16) : "",
               featuredImage: null,
               faqs: Array.isArray(blog.faqs) ? blog.faqs : [],
             });
@@ -252,6 +256,13 @@ export default function BlogForm() {
       fd.append("author", formData.author.trim());
       fd.append("isFeatured", String(formData.isFeatured));
       fd.append("status", formData.status);
+      if (formData.status === "scheduled") {
+        if (!formData.scheduledAt) {
+          setLoading(false);
+          return alert("Please select a schedule date and time.");
+        }
+        fd.append("scheduledAt", new Date(formData.scheduledAt).toISOString());
+      }
 
       // Keywords array
       const kwArray = formData.keywords
@@ -478,13 +489,35 @@ export default function BlogForm() {
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
+                <option value="published">✅ Publish Now (Live)</option>
+                <option value="scheduled">⏰ Schedule for Later (Date &amp; Time)</option>
+                <option value="draft">📝 Save as Draft</option>
+                <option value="archived">📦 Archived</option>
               </select>
             </div>
+
+            {/* Schedule Date & Time Picker */}
+            {formData.status === "scheduled" && (
+              <div className="rounded-xl border border-purple-200 bg-purple-50/70 p-4 transition">
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-purple-900">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                  Schedule Publish Date &amp; Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.scheduledAt}
+                  onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                  className="w-full rounded-lg border border-purple-300 bg-white px-3.5 py-2.5 text-sm font-medium text-gray-800 shadow-sm focus:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                />
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-purple-700">
+                  <Clock className="h-3.5 w-3.5" />
+                  Is date aur time par blog automatically website par public ho jayega.
+                </p>
+              </div>
+            )}
 
             {/* Featured Image */}
             <div>

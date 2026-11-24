@@ -71,8 +71,18 @@ const blogSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published", "archived"],
+      enum: ["draft", "published", "scheduled", "archived"],
       default: "published",
+      index: true,
+    },
+    scheduledAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    publishedAt: {
+      type: Date,
+      default: Date.now,
       index: true,
     },
     featuredImage: {

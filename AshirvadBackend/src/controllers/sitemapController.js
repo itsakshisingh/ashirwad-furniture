@@ -62,7 +62,15 @@ const getSitemapXml = async (req, res) => {
 
     // 2. Fetch data from MongoDB in parallel
     const [blogs, products, categories, subcategories] = await Promise.all([
-      Blog.find({ status: "published" }, "title slug updatedAt createdAt")
+      Blog.find(
+        {
+          $or: [
+            { status: "published" },
+            { status: "scheduled", scheduledAt: { $lte: new Date() } },
+          ],
+        },
+        "title slug updatedAt createdAt"
+      )
         .sort({ updatedAt: -1 })
         .lean(),
 
