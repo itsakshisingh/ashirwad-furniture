@@ -563,8 +563,15 @@ const createProduct = async (req, res) => {
         : body.delivery || {};
     const tags =
       typeof body.tags === "string" ? JSON.parse(body.tags) : body.tags || [];
-    const seo =
+    const rawSeo =
       typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo || {};
+    const seo = {
+      metaTitle: (rawSeo.metaTitle && rawSeo.metaTitle.trim()) || (body.name ? body.name.trim() : ""),
+      metaDescription:
+        (rawSeo.metaDescription && rawSeo.metaDescription.trim()) ||
+        body.shortDescription ||
+        "",
+    };
 
     // Process Variants containing all details
     const variants = parseVariants(body.variants || body.colorVariants, req);
@@ -864,9 +871,16 @@ const updateProduct = async (req, res) => {
     }
 
     if (body.seo) {
-      const seo =
+      const rawSeo =
         typeof body.seo === "string" ? JSON.parse(body.seo) : body.seo;
-      product.seo = { ...product.seo, ...seo };
+      product.seo = {
+        metaTitle: (rawSeo.metaTitle && rawSeo.metaTitle.trim()) || product.seo?.metaTitle || product.name || "",
+        metaDescription:
+          (rawSeo.metaDescription && rawSeo.metaDescription.trim()) ||
+          product.seo?.metaDescription ||
+          product.shortDescription ||
+          "",
+      };
     }
 
     if (body.isFeatured !== undefined) {
